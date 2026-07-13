@@ -41,8 +41,8 @@ SETTINGS_BACKUP_DIR = APP_DIR / "settings-backups"
 LOG_DIR = Path(os.environ.get("QWEN_LAUNCHER_LOG_DIR", str(APP_DIR / "logs"))).resolve()
 PID_PATH = Path(os.environ.get("QWEN_LAUNCHER_PID_PATH", str(APP_DIR / "web-launcher.pid"))).resolve()
 ACTIVE_MODEL_PATH = Path(os.environ.get("QWEN_LAUNCHER_ACTIVE_MODEL_PATH", str(APP_DIR / "active-model.json"))).resolve()
-OPENWEBUI_ROOT = Path(os.environ.get("OPENWEBUI_ROOT", str(APP_DIR.parent / "OpenWebUI"))).resolve()
-OPENTERMINAL_ROOT = OPENWEBUI_ROOT / "OpenTerminal"
+MANAGED_SERVICES_PATH = Path(os.environ.get("QWEN_LAUNCHER_MANAGED_SERVICES_PATH", str(APP_DIR / "managed-services.json"))).resolve()
+DEFAULT_OPENWEBUI_ROOT = Path(os.environ.get("OPENWEBUI_ROOT", str(APP_DIR.parent / "OpenWebUI"))).resolve()
 POWERSHELL_EXE = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
 
 SAMPLING_KEYS = (
@@ -209,6 +209,15 @@ def validate_server_executable(raw_value) -> str:
     return str(path)
 
 
+def normalize_service_root(raw_value) -> str:
+    if not isinstance(raw_value, str) or not raw_value.strip():
+        raise ValueError("OpenWebUI folder is required")
+    path = Path(raw_value.strip().strip('"')).expanduser()
+    if not path.is_absolute():
+        raise ValueError("OpenWebUI folder must be an absolute path")
+    return str(path.resolve())
+
+
 def load_user_settings(default_executable: str) -> dict:
     if SETTINGS_PATH.is_file():
         with SETTINGS_PATH.open("r", encoding="utf-8") as handle:
@@ -218,6 +227,7 @@ def load_user_settings(default_executable: str) -> dict:
     else:
         data = {
             "openwebui_enabled": False,
+            "openwebui_root": str(DEFAULT_OPENWEBUI_ROOT),
             "openwebui_url": "http://127.0.0.1:8181",
             "openterminal_url": "http://127.0.0.1:8765",
             "vane_enabled": False,
@@ -232,6 +242,7 @@ def load_user_settings(default_executable: str) -> dict:
         raise ValueError("vane_enabled must be true or false")
     return {
         "openwebui_enabled": openwebui_enabled,
+        "openwebui_root": normalize_service_root(data.get("openwebui_root", str(DEFAULT_OPENWEBUI_ROOT))),
         "openwebui_url": normalize_service_url(data.get("openwebui_url", "http://127.0.0.1:8181"), "OpenWebUI"),
         "openterminal_url": normalize_service_url(data.get("openterminal_url", "http://127.0.0.1:8765"), "OpenTerminal"),
         "vane_enabled": vane_enabled,
@@ -255,7 +266,9 @@ def persist_user_settings(settings: dict) -> None:
 
 
 def service_definitions(config: dict) -> dict[str, dict]:
-    terminal_config_path = OPENTERMINAL_ROOT / "config.toml"
+    openwebui_root = Path(config.get("openwebui_root", str(DEFAULT_OPENWEBUI_ROOT))).resolve()
+    openterminal_root = openwebui_root / "OpenTerminal"
+    terminal_config_path = openterminal_root / "config.toml"
     terminal_config = {}
     if terminal_config_path.is_file():
         try:
@@ -264,27 +277,28 @@ def service_definitions(config: dict) -> dict[str, dict]:
         except (OSError, tomllib.TOMLDecodeError):
             LOGGER.warning("Unable to read optional OpenTerminal config: %s", terminal_config_path)
     terminal_port = int(terminal_config.get("port", 8765))
+    openwebui_port = int(urlparse(config["openwebui_url"]).port or 8181)
     terminal_endpoint = config["openterminal_url"].rstrip("/")
     return {
         "openwebui": {
             "name": "OpenWebUI",
-            "script": OPENWEBUI_ROOT / "Start-OpenWebUI.ps1",
-            "working_directory": OPENWEBUI_ROOT,
-            "port": 8181,
+            "script": openwebui_root / "Start-OpenWebUI.ps1",
+            "working_directory": openwebui_root,
+            "port": openwebui_port,
             "health_url": config["openwebui_url"],
             "open_url": config["openwebui_url"],
-            "stdout": OPENWEBUI_ROOT / "logs" / "open-webui.out.log",
-            "stderr": OPENWEBUI_ROOT / "logs" / "open-webui.err.log",
+            "stdout": openwebui_root / "logs" / "open-webui.out.log",
+            "stderr": openwebui_root / "logs" / "open-webui.err.log",
         },
         "openterminal": {
             "name": "OpenTerminal",
-            "script": OPENTERMINAL_ROOT / "Start-OpenTerminal.ps1",
-            "working_directory": OPENTERMINAL_ROOT,
+            "script": openterminal_root / "Start-OpenTerminal.ps1",
+            "working_directory": openterminal_root,
             "port": terminal_port,
             "health_url": f"{terminal_endpoint}/health",
             "open_url": None,
-            "stdout": OPENTERMINAL_ROOT / "logs" / "open-terminal.out.log",
-            "stderr": OPENTERMINAL_ROOT / "logs" / "open-terminal.err.log",
+            "stdout": openterminal_root / "logs" / "open-terminal.out.log",
+            "stderr": openterminal_root / "logs" / "open-terminal.err.log",
         },
         "vane": {
             "name": "Vane",
@@ -303,14 +317,91 @@ def url_is_live(url: str, timeout: float = 1.5) -> bool:
         return False
 
 
+def load_managed_service_state() -> dict:
+    if not MANAGED_SERVICES_PATH.is_file():
+        return {"version": 1, "services": {}}
+    try:
+        with MANAGED_SERVICES_PATH.open("r", encoding="utf-8") as handle:
+            state = json.load(handle)
+        if state.get("version") != 1 or not isinstance(state.get("services"), dict):
+            raise ValueError("unsupported managed service state")
+        return state
+    except (OSError, ValueError, json.JSONDecodeError):
+        LOGGER.warning("Ignoring invalid managed service state: %s", MANAGED_SERVICES_PATH)
+        return {"version": 1, "services": {}}
+
+
+def persist_managed_service_state(state: dict) -> None:
+    temp_path = MANAGED_SERVICES_PATH.with_suffix(".json.tmp")
+    with temp_path.open("w", encoding="utf-8", newline="\n") as handle:
+        json.dump(state, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp_path, MANAGED_SERVICES_PATH)
+
+
+def update_managed_service_record(service_id: str, record: dict | None) -> None:
+    state = load_managed_service_state()
+    if record is None:
+        state["services"].pop(service_id, None)
+    else:
+        state["services"][service_id] = record
+    if state["services"]:
+        persist_managed_service_state(state)
+    else:
+        MANAGED_SERVICES_PATH.unlink(missing_ok=True)
+
+
+def validated_managed_service_record(service_id: str, spec: dict) -> dict | None:
+    record = load_managed_service_state()["services"].get(service_id)
+    if not isinstance(record, dict):
+        return None
+    try:
+        recorded_port = int(record.get("port", -1))
+    except (TypeError, ValueError):
+        return None
+    if recorded_port != int(spec["port"]):
+        return None
+    listener = record.get("listener")
+    if not isinstance(listener, dict):
+        return None
+    try:
+        pid = int(listener["pid"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if pid not in listener_pids(spec["port"]) or not process_identity_matches(pid, listener):
+        return None
+    return record
+
+
 def service_status(config: dict) -> dict:
     result = {}
     for service_id, spec in service_definitions(config).items():
+        managed = False
+        listening = False
+        if "port" in spec:
+            listening = bool(listener_pids(spec["port"]))
+            managed = validated_managed_service_record(service_id, spec) is not None
+        live = url_is_live(spec["health_url"])
         result[service_id] = {
             "id": service_id,
             "name": spec["name"],
-            "live": url_is_live(spec["health_url"]),
+            "live": live,
             "open_url": spec["open_url"],
+            "managed": managed,
+            "can_start": "script" in spec and not listening,
+            "can_stop": managed,
+            "can_restart": managed,
+            "control_note": (
+                "Managed by this Launchpad installation"
+                if managed
+                else "Connected externally; stop it manually once to hand control to Launchpad"
+                if live and "script" in spec
+                else "Status only"
+                if "script" not in spec
+                else "Ready to start"
+            ),
         }
     return result
 
@@ -387,7 +478,7 @@ def listener_pids(port: int) -> list[int]:
     return sorted({int(match.group(1)) for line in completed.stdout.splitlines() if (match := pattern.search(line))})
 
 
-def start_service(spec: dict) -> None:
+def start_service(spec: dict) -> subprocess.Popen:
     if not POWERSHELL_EXE.is_file():
         raise FileNotFoundError(f"PowerShell not found: {POWERSHELL_EXE}")
     if not spec["script"].is_file():
@@ -395,7 +486,7 @@ def start_service(spec: dict) -> None:
     spec["stdout"].parent.mkdir(parents=True, exist_ok=True)
     creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     with spec["stdout"].open("ab", buffering=0) as stdout, spec["stderr"].open("ab", buffering=0) as stderr:
-        subprocess.Popen(
+        return subprocess.Popen(
             [
                 str(POWERSHELL_EXE),
                 "-NoProfile",
@@ -410,18 +501,107 @@ def start_service(spec: dict) -> None:
         )
 
 
+def wait_for_managed_service(service_id: str, spec: dict, launcher: subprocess.Popen, timeout: float = 30.0) -> dict:
+    launcher_identity = process_identity(launcher.pid)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        for pid in listener_pids(spec["port"]):
+            listener_identity = process_identity(pid)
+            if listener_identity:
+                record = {
+                    "service_id": service_id,
+                    "port": int(spec["port"]),
+                    "script": str(spec["script"]),
+                    "listener": listener_identity,
+                }
+                if launcher_identity:
+                    record["launcher"] = launcher_identity
+                update_managed_service_record(service_id, record)
+                return record
+        return_code = launcher.poll()
+        if return_code is not None:
+            raise RuntimeError(f"{spec['name']} launcher exited with code {return_code} before opening port {spec['port']}")
+        time.sleep(0.25)
+    raise RuntimeError(f"{spec['name']} did not open port {spec['port']} within {timeout:g} seconds")
+
+
+def stop_managed_service(service_id: str, spec: dict, record: dict) -> None:
+    listener = record["listener"]
+    listener_pid = int(listener["pid"])
+    if listener_pid not in listener_pids(spec["port"]) or not process_identity_matches(listener_pid, listener):
+        update_managed_service_record(service_id, None)
+        raise RuntimeError(f"Refusing to stop {spec['name']} because its recorded process identity no longer matches")
+    target = listener
+    launcher = record.get("launcher")
+    if isinstance(launcher, dict):
+        try:
+            launcher_pid = int(launcher["pid"])
+        except (KeyError, TypeError, ValueError):
+            launcher_pid = 0
+        if launcher_pid and process_identity_matches(launcher_pid, launcher):
+            target = launcher
+    target_pid = int(target["pid"])
+    def terminate_tree(pid: int) -> None:
+        if os.name == "nt":
+            result = subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            if result.returncode not in {0, 128}:
+                raise RuntimeError(result.stderr.strip() or result.stdout.strip() or f"Unable to stop PID {pid}")
+        else:
+            os.kill(pid, 15)
+
+    terminate_tree(target_pid)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline and listener_pid in listener_pids(spec["port"]):
+        time.sleep(0.2)
+    if (
+        target_pid != listener_pid
+        and listener_pid in listener_pids(spec["port"])
+        and process_identity_matches(listener_pid, listener)
+    ):
+        terminate_tree(listener_pid)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and listener_pid in listener_pids(spec["port"]):
+            time.sleep(0.2)
+    if listener_pid in listener_pids(spec["port"]):
+        raise RuntimeError(f"{spec['name']} did not release port {spec['port']}")
+    update_managed_service_record(service_id, None)
+
+
 def control_service(config: dict, service_id: str, action: str) -> dict:
-    if action != "start":
-        raise ValueError("Only start is supported; Launchpad will not stop processes it cannot prove it owns")
+    if action not in {"start", "stop", "restart"}:
+        raise ValueError("Service action must be start, stop, or restart")
     definitions = service_definitions(config)
     if service_id not in definitions:
         raise KeyError("Unknown service")
     spec = definitions[service_id]
-    if listener_pids(spec["port"]):
+    record = validated_managed_service_record(service_id, spec)
+    listening = bool(listener_pids(spec["port"]))
+    if record is None and load_managed_service_state()["services"].get(service_id) is not None:
+        update_managed_service_record(service_id, None)
+    if action == "start" and listening:
         return service_status(config)[service_id]
-    start_service(spec)
+    if action in {"stop", "restart"} and listening and record is None:
+        raise RuntimeError(
+            f"Refusing to {action} {spec['name']} because the listener was not started by this Launchpad installation"
+        )
+    if action == "stop":
+        if record is None:
+            raise RuntimeError(f"{spec['name']} is not running as a managed service")
+        stop_managed_service(service_id, spec, record)
+        LOGGER.info("Service action=stop service=%s pid=%s", service_id, record["listener"]["pid"])
+        return service_status(config)[service_id]
+    if action == "restart" and record is not None:
+        stop_managed_service(service_id, spec, record)
+    launcher = start_service(spec)
+    record = wait_for_managed_service(service_id, spec, launcher)
     LOGGER.info("Service action=%s service=%s launcher=%s", action, service_id, spec["script"])
-    time.sleep(0.35)
     return service_status(config)[service_id]
 
 
@@ -541,6 +721,7 @@ def load_config() -> dict:
     user_settings = load_user_settings(server["executable"])
     server["executable"] = user_settings["llama_server_executable"]
     config["openwebui_enabled"] = user_settings["openwebui_enabled"]
+    config["openwebui_root"] = user_settings["openwebui_root"]
     config["openwebui_url"] = user_settings["openwebui_url"]
     config["openterminal_url"] = user_settings["openterminal_url"]
     config["vane_enabled"] = user_settings["vane_enabled"]
@@ -1117,7 +1298,10 @@ def is_port_listening(port: int) -> bool:
 
 def process_image_path(pid: int) -> str | None:
     if os.name != "nt":
-        return None
+        try:
+            return os.readlink(f"/proc/{pid}/exe")
+        except OSError:
+            return None
     kernel32 = ctypes.windll.kernel32
     kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
     kernel32.OpenProcess.restype = wintypes.HANDLE
@@ -1150,18 +1334,129 @@ def same_executable(pid: int, expected_path: str) -> bool:
     return os.path.normcase(os.path.abspath(actual_path)) == os.path.normcase(os.path.abspath(expected_path))
 
 
+def process_creation_marker(pid: int) -> int | None:
+    if os.name != "nt":
+        try:
+            return int(Path(f"/proc/{pid}").stat().st_ctime_ns)
+        except OSError:
+            return None
+
+    class FILETIME(ctypes.Structure):
+        _fields_ = (("low", wintypes.DWORD), ("high", wintypes.DWORD))
+
+    kernel32 = ctypes.windll.kernel32
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.GetProcessTimes.argtypes = (
+        wintypes.HANDLE,
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+    )
+    kernel32.GetProcessTimes.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    handle = kernel32.OpenProcess(0x1000, False, pid)
+    if not handle:
+        return None
+    try:
+        created = FILETIME()
+        exited = FILETIME()
+        kernel = FILETIME()
+        user = FILETIME()
+        if not kernel32.GetProcessTimes(handle, ctypes.byref(created), ctypes.byref(exited), ctypes.byref(kernel), ctypes.byref(user)):
+            return None
+        return (int(created.high) << 32) | int(created.low)
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def process_identity(pid: int) -> dict | None:
+    executable = process_image_path(pid)
+    created = process_creation_marker(pid)
+    if not executable or created is None:
+        return None
+    return {"pid": int(pid), "executable": executable, "created": created}
+
+
+def process_identity_matches(pid: int, expected: dict) -> bool:
+    try:
+        expected_executable = str(expected["executable"])
+        expected_created = int(expected["created"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return same_executable(pid, expected_executable) and process_creation_marker(pid) == expected_created
+
+
+def process_exit_code(pid: int) -> int | None:
+    if os.name != "nt":
+        try:
+            os.kill(pid, 0)
+            return None
+        except OSError:
+            return 0
+    kernel32 = ctypes.windll.kernel32
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.GetExitCodeProcess.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+    kernel32.GetExitCodeProcess.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    handle = kernel32.OpenProcess(0x1000, False, pid)
+    if not handle:
+        return 0
+    try:
+        exit_code = wintypes.DWORD()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return 0
+        return None if exit_code.value == 259 else int(exit_code.value)
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+class RecoveredProcess:
+    def __init__(self, pid: int) -> None:
+        self.pid = pid
+        self.returncode: int | None = None
+
+    def poll(self) -> int | None:
+        exit_code = process_exit_code(self.pid)
+        if exit_code is not None:
+            self.returncode = exit_code
+        return self.returncode
+
+    def wait(self, timeout: float | None = None) -> int:
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while self.poll() is None:
+            if deadline is not None and time.monotonic() >= deadline:
+                raise subprocess.TimeoutExpired(str(self.pid), timeout)
+            time.sleep(0.1)
+        return int(self.returncode or 0)
+
+    def kill(self) -> None:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(self.pid), "/T", "/F"],
+                capture_output=True,
+                timeout=15,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+        else:
+            os.kill(self.pid, 9)
+
+
 class LaunchManager:
     def __init__(self, config: dict, registry: ModelRegistry):
         self.config = config
         self.registry = registry
         self.lock = threading.RLock()
-        self.process: subprocess.Popen | None = None
+        self.process: subprocess.Popen | RecoveredProcess | None = None
         self.log_handle = None
         self.current: dict | None = None
         self.last: dict | None = None
-        if ACTIVE_MODEL_PATH.is_file():
-            LOGGER.warning("Discarding stale active-model state; unowned processes are never adopted")
-            self._clear_active_session()
+        self._recover_active_session()
 
     def _clear_active_session(self) -> None:
         ACTIVE_MODEL_PATH.unlink(missing_ok=True)
@@ -1187,6 +1482,45 @@ class LaunchManager:
         except Exception:
             temp_path.unlink(missing_ok=True)
             LOGGER.exception("Unable to persist active model session")
+
+    def _recover_active_session(self) -> None:
+        if not ACTIVE_MODEL_PATH.is_file():
+            return
+        try:
+            with ACTIVE_MODEL_PATH.open("r", encoding="utf-8") as handle:
+                saved = json.load(handle)
+            current = saved.get("current")
+            if not isinstance(current, dict):
+                raise ValueError("missing current process state")
+            pid = int(current.get("pid", 0))
+            server_port = int(self.config["server"]["port"])
+            expected_executable = self.config["server"]["executable"]
+            saved_executable = str(saved.get("executable", ""))
+            identity = {
+                "executable": current.get("process_executable"),
+                "created": current.get("process_started_marker"),
+            }
+            if (
+                saved.get("version") != 1
+                or int(saved.get("server_port", -1)) != server_port
+                or os.path.normcase(os.path.abspath(saved_executable))
+                != os.path.normcase(os.path.abspath(expected_executable))
+                or not current.get("owned")
+                or int(current.get("port", -1)) != server_port
+                or pid not in listener_pids(server_port)
+                or not process_identity_matches(pid, identity)
+            ):
+                raise ValueError("saved process identity no longer matches the configured listener")
+            current["recovered"] = True
+            self.process = RecoveredProcess(pid)
+            self.current = current
+            self._persist_active_session()
+            LOGGER.info("Recovered managed llama-server: profile=%s pid=%s", current.get("id"), pid)
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            LOGGER.warning("Discarding stale or unverifiable active-model state")
+            self.process = None
+            self.current = None
+            self._clear_active_session()
 
     def _refresh_locked(self) -> None:
         if self.process is None:
@@ -1358,6 +1692,7 @@ class LaunchManager:
                 "vision": resolved["vision"],
                 "pid": process.pid,
                 "process_executable": self.config["server"]["executable"],
+                "process_started_marker": process_creation_marker(process.pid),
                 "port": server_port,
                 "started_at": utc_now(),
                 "started_epoch": time.time(),
@@ -1365,6 +1700,7 @@ class LaunchManager:
                 "custom_options": details["custom"],
                 "resolved_options": resolved,
                 "owned": True,
+                "recovered": False,
             }
             self._persist_active_session()
             LOGGER.info("Started profile=%s pid=%s command=%r", profile_id, process.pid, command)
@@ -1377,7 +1713,7 @@ class LaunchManager:
                 raise RuntimeError("No model is running")
             process = self.process
             current = dict(self.current or {})
-            if not current.get("owned") or not isinstance(process, subprocess.Popen):
+            if not current.get("owned") or process is None or not isinstance(getattr(process, "pid", None), int):
                 raise RuntimeError("Refusing to stop a process that was not started by this Launchpad instance")
             expected_executable = current.get("process_executable")
             if os.name == "nt" and (
@@ -1385,6 +1721,8 @@ class LaunchManager:
                 or not same_executable(process.pid, expected_executable)
             ):
                 raise RuntimeError("Refusing to stop the process because its executable identity could not be verified")
+            if current.get("recovered") and process_creation_marker(process.pid) != current.get("process_started_marker"):
+                raise RuntimeError("Refusing to stop the recovered process because its start identity no longer matches")
             LOGGER.info("Stopping profile=%s pid=%s", current.get("id"), process.pid)
             if os.name == "nt":
                 result = subprocess.run(
@@ -1559,6 +1897,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         if route == "/api/settings":
             self._json(HTTPStatus.OK, {
                 "openwebui_enabled": self.server.config["openwebui_enabled"],
+                "openwebui_root": self.server.config["openwebui_root"],
                 "openwebui_url": self.server.config["openwebui_url"],
                 "openterminal_url": self.server.config["openterminal_url"],
                 "vane_enabled": self.server.config["vane_enabled"],
@@ -1617,7 +1956,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         route = urlparse(self.path).path
         try:
             body = self._read_json()
-            service_match = re.fullmatch(r"/api/services/(openwebui|openterminal)/(start)", route)
+            service_match = re.fullmatch(r"/api/services/(openwebui|openterminal)/(start|stop|restart)", route)
             if service_match:
                 with self.server.service_lock:
                     item = control_service(self.server.config, service_match.group(1), service_match.group(2))
@@ -1632,6 +1971,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     raise ValueError("vane_enabled must be true or false")
                 settings = {
                     "openwebui_enabled": openwebui_enabled,
+                    "openwebui_root": normalize_service_root(body.get("openwebui_root")),
                     "openwebui_url": normalize_service_url(body.get("openwebui_url"), "OpenWebUI"),
                     "openterminal_url": normalize_service_url(body.get("openterminal_url"), "OpenTerminal"),
                     "vane_enabled": vane_enabled,
@@ -1641,12 +1981,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                 with self.server.settings_lock:
                     persist_user_settings(settings)
                     self.server.config["openwebui_enabled"] = settings["openwebui_enabled"]
+                    self.server.config["openwebui_root"] = settings["openwebui_root"]
                     self.server.config["openwebui_url"] = settings["openwebui_url"]
                     self.server.config["openterminal_url"] = settings["openterminal_url"]
                     self.server.config["vane_enabled"] = settings["vane_enabled"]
                     self.server.config["vane_url"] = settings["vane_url"]
                     self.server.config["server"]["executable"] = settings["llama_server_executable"]
-                LOGGER.info("Updated user settings: openwebui_enabled=%s openwebui=%s openterminal=%s vane_enabled=%s vane=%s executable=%s", settings["openwebui_enabled"], settings["openwebui_url"], settings["openterminal_url"], settings["vane_enabled"], settings["vane_url"], settings["llama_server_executable"])
+                LOGGER.info("Updated user settings: openwebui_enabled=%s openwebui_root=%s openwebui=%s openterminal=%s vane_enabled=%s vane=%s executable=%s", settings["openwebui_enabled"], settings["openwebui_root"], settings["openwebui_url"], settings["openterminal_url"], settings["vane_enabled"], settings["vane_url"], settings["llama_server_executable"])
                 self._json(HTTPStatus.OK, {**settings, "settings_file": str(SETTINGS_PATH)})
                 return
             if route == "/api/launch":

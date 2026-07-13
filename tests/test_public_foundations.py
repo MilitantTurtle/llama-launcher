@@ -74,6 +74,15 @@ class SetupTests(unittest.TestCase):
 
 
 class SafetyTests(unittest.TestCase):
+    @staticmethod
+    def service_config(root: Path) -> dict:
+        return {
+            "openwebui_root": str(root),
+            "openwebui_url": "http://127.0.0.1:8181",
+            "openterminal_url": "http://127.0.0.1:8765",
+            "vane_url": "http://127.0.0.1:32761",
+        }
+
     def test_mutex_identity_is_stable_and_install_specific(self) -> None:
         first = app.instance_mutex_name(Path("C:/Launchpad/Public"))
         same = app.instance_mutex_name(Path("c:/launchpad/public"))
@@ -88,8 +97,41 @@ class SafetyTests(unittest.TestCase):
         self.assertEqual(library.match("C:/models/Qwen3.5-9B-Q4_K_M.gguf")["id"], "qwen35-9b")
 
     def test_restart_of_unowned_optional_service_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ValueError, "will not stop"):
-            app.control_service({}, "openwebui", "restart")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state_path = root / "managed-services.json"
+            with mock.patch.object(app, "MANAGED_SERVICES_PATH", state_path), mock.patch.object(
+                app, "listener_pids", return_value=[4321]
+            ), mock.patch.object(app.subprocess, "run") as run:
+                with self.assertRaisesRegex(RuntimeError, "not started by this Launchpad"):
+                    app.control_service(self.service_config(root), "openwebui", "restart")
+            run.assert_not_called()
+
+    def test_process_identity_requires_matching_executable_and_start_marker(self) -> None:
+        expected = {"executable": "C:/service.exe", "created": 987654}
+        with mock.patch.object(app, "same_executable", return_value=True), mock.patch.object(
+            app, "process_creation_marker", return_value=987654
+        ):
+            self.assertTrue(app.process_identity_matches(4321, expected))
+        with mock.patch.object(app, "same_executable", return_value=True), mock.patch.object(
+            app, "process_creation_marker", return_value=987655
+        ):
+            self.assertFalse(app.process_identity_matches(4321, expected))
+
+    def test_managed_service_stop_targets_only_recorded_process_tree(self) -> None:
+        spec = {"name": "OpenWebUI", "port": 8181}
+        record = {
+            "listener": {"pid": 4321, "executable": "C:/service.exe", "created": 987654}
+        }
+        completed = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.object(app, "listener_pids", side_effect=[[4321], [], []]), mock.patch.object(
+            app, "process_identity_matches", return_value=True
+        ), mock.patch.object(app.subprocess, "run", return_value=completed) as run, mock.patch.object(
+            app, "update_managed_service_record"
+        ) as update:
+            app.stop_managed_service("openwebui", spec, record)
+        self.assertEqual(run.call_args.args[0][:3], ["taskkill", "/PID", "4321"])
+        update.assert_called_once_with("openwebui", None)
 
     def test_stale_model_state_is_discarded_not_adopted(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -99,6 +141,36 @@ class SafetyTests(unittest.TestCase):
                 manager = app.LaunchManager({"server": {"port": 8000, "executable": "llama-server.exe"}}, object())
             self.assertIsNone(manager.process)
             self.assertFalse(state_path.exists())
+
+    def test_verified_model_state_is_recovered_after_launcher_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            state_path = Path(temporary) / "active-model.json"
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "server_port": 8000,
+                        "executable": "C:/llama-server.exe",
+                        "current": {
+                            "id": "model-default",
+                            "pid": 4321,
+                            "port": 8000,
+                            "process_executable": "C:/llama-server.exe",
+                            "process_started_marker": 987654,
+                            "owned": True,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config = {"server": {"port": 8000, "executable": "C:/llama-server.exe"}}
+            with mock.patch.object(app, "ACTIVE_MODEL_PATH", state_path), mock.patch.object(
+                app, "listener_pids", return_value=[4321]
+            ), mock.patch.object(app, "process_identity_matches", return_value=True):
+                manager = app.LaunchManager(config, object())
+            self.assertIsInstance(manager.process, app.RecoveredProcess)
+            self.assertEqual(manager.process.pid, 4321)
+            self.assertTrue(manager.current["recovered"])
 
     def test_stop_refuses_an_unowned_process_without_taskkill(self) -> None:
         manager = app.LaunchManager.__new__(app.LaunchManager)

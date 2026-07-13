@@ -33,6 +33,7 @@ async function initializeSettings() {
     settingsToken = session.token;
     const settings = await request("/api/settings");
     el("settings-openwebui-enabled").checked = settings.openwebui_enabled;
+    el("settings-openwebui-root").value = settings.openwebui_root;
     el("settings-openwebui").value = settings.openwebui_url;
     el("settings-openterminal").value = settings.openterminal_url;
     el("settings-vane-enabled").checked = settings.vane_enabled;
@@ -60,6 +61,7 @@ el("settings-form").addEventListener("submit", async (event) => {
       method: "POST",
       body: JSON.stringify({
         openwebui_enabled: el("settings-openwebui-enabled").checked,
+        openwebui_root: el("settings-openwebui-root").value.trim(),
         openwebui_url: el("settings-openwebui").value.trim(),
         openterminal_url: el("settings-openterminal").value.trim(),
         vane_enabled: el("settings-vane-enabled").checked,
@@ -68,6 +70,7 @@ el("settings-form").addEventListener("submit", async (event) => {
       }),
     });
     el("settings-openwebui-enabled").checked = settings.openwebui_enabled;
+    el("settings-openwebui-root").value = settings.openwebui_root;
     el("settings-openwebui").value = settings.openwebui_url;
     el("settings-openterminal").value = settings.openterminal_url;
     el("settings-vane-enabled").checked = settings.vane_enabled;

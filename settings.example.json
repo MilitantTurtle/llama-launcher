@@ -1,5 +1,6 @@
 {
   "openwebui_enabled": false,
+  "openwebui_root": "C:\\path\\to\\OpenWebUI",
   "openwebui_url": "http://127.0.0.1:8181",
   "openterminal_url": "http://127.0.0.1:8765",
   "vane_enabled": false,

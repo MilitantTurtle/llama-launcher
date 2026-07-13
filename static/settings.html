@@ -39,6 +39,10 @@
             <input id="settings-openwebui-enabled" name="openwebui_enabled" type="checkbox">
             <span><strong>Show services button</strong><small>Hide the OpenWebUI/OpenTerminal card when this integration is not wanted.</small></span>
           </label>
+          <label>OpenWebUI installation folder
+            <input id="settings-openwebui-root" name="openwebui_root" required placeholder="C:\path\to\OpenWebUI" autocomplete="off">
+          </label>
+          <p class="settings-note">Launchpad can stop or restart OpenWebUI and OpenTerminal only after it starts and records their exact process identities.</p>
           <label>IP address and port
             <input id="settings-openwebui" name="openwebui_url" required placeholder="127.0.0.1:8181" autocomplete="off">
           </label>
