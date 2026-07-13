@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Launchpad Settings</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <main class="shell settings-shell">
+    <header class="settings-hero">
+      <div>
+        <a class="back-link" href="/">&larr; Model Launchpad</a>
+        <p class="eyebrow">CONTROL PANEL</p>
+        <h1>Launcher <span>Settings</span></h1>
+        <p class="subtitle">Configure connected services and the llama.cpp runtime used for new launches.</p>
+      </div>
+      <div class="connection-card settings-state-card">
+        <span class="connection-dot" id="settings-connection-dot"></span>
+        <div>
+          <small>SETTINGS</small>
+          <strong id="settings-connection-label">Connecting…</strong>
+        </div>
+      </div>
+    </header>
+
+    <form class="settings-page-form" id="settings-form">
+      <section class="settings-page-card">
+        <div class="settings-card-icon">O</div>
+        <div class="settings-card-copy">
+          <span class="section-label">CONNECTED SERVICE</span>
+          <h2>OpenWebUI</h2>
+          <p>The address used by the OpenWebUI bubble on the launchpad.</p>
+          <label class="settings-service-toggle">
+            <input id="settings-openwebui-enabled" name="openwebui_enabled" type="checkbox">
+            <span><strong>Show services button</strong><small>Hide the OpenWebUI/OpenTerminal card when this integration is not wanted.</small></span>
+          </label>
+          <label>IP address and port
+            <input id="settings-openwebui" name="openwebui_url" required placeholder="127.0.0.1:8181" autocomplete="off">
+          </label>
+          <a class="inline-link" id="settings-openwebui-preview" target="_blank" rel="noreferrer">Open configured address ↗</a>
+          <div class="settings-subsection">
+            <span class="section-label">OPENTERMINAL</span>
+            <label>Endpoint used by OpenWebUI
+              <input id="settings-openterminal" name="openterminal_url" required placeholder="127.0.0.1:8765" autocomplete="off">
+            </label>
+            <small class="settings-hint">The launchpad checks <code>/health</code> on this endpoint.</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-page-card">
+        <div class="settings-card-icon">V</div>
+        <div class="settings-card-copy">
+          <span class="section-label">REMOTE SERVICE</span>
+          <h2>Vane</h2>
+          <p>A clickable status link for the remote Vane answering engine. The launchpad only checks availability and never attempts to start or stop it.</p>
+          <label class="settings-service-toggle">
+            <input id="settings-vane-enabled" name="vane_enabled" type="checkbox">
+            <span><strong>Show Vane button</strong><small>Display the Vane connected/disconnected link on the launchpad.</small></span>
+          </label>
+          <label>IP address and port
+            <input id="settings-vane" name="vane_url" required placeholder="127.0.0.1:32761" autocomplete="off">
+          </label>
+          <a class="inline-link" id="settings-vane-preview" target="_blank" rel="noreferrer">Open configured address &#8599;</a>
+        </div>
+      </section>
+
+      <section class="settings-page-card">
+        <div class="settings-card-icon llama-icon">L</div>
+        <div class="settings-card-copy">
+          <span class="section-label">INFERENCE RUNTIME</span>
+          <h2>llama.cpp</h2>
+          <p>Absolute path to the <code>llama-server.exe</code> used for future model launches.</p>
+          <label>llama-server executable
+            <input id="settings-llama-server" name="llama_server_executable" required placeholder="C:\llama.cpp\...\llama-server.exe" autocomplete="off">
+          </label>
+          <small class="settings-hint">The file must already exist and must be named llama-server.exe.</small>
+        </div>
+      </section>
+
+      <section class="settings-save-bar">
+        <div>
+          <span class="section-label">PERSISTENCE</span>
+          <strong id="settings-file">settings.json</strong>
+          <small>Changes apply immediately and are loaded again on startup.</small>
+        </div>
+        <div class="settings-save-actions">
+          <a class="button secondary" href="/">Cancel</a>
+          <button class="button" id="settings-submit" type="submit">Save settings</button>
+        </div>
+      </section>
+    </form>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/settings.js" defer></script>
+</body>
+</html>

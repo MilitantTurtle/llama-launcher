@@ -1,0 +1,1093 @@
+{
+  "version": 1,
+  "updated_at": "2026-07-13",
+  "policy": {
+    "provenance": "creator-model-card-or-creator-reference-inference-only",
+    "context_is_separate": true,
+    "default_context": 32768
+  },
+  "ranking_snapshot": {
+    "source": "https://huggingface.co/models?pipeline_tag=text-generation&sort=downloads",
+    "checked_at": "2026-07-12",
+    "raw_repository_count": 100,
+    "method": "Top text-generation downloads, with test fixtures, base-only repositories, adapters, mirrors, and duplicate quantizations collapsed or excluded. Presets are stored only when the creator publishes sampling guidance; clearly labelled reference profiles may use creator-owned reference inference examples."
+  },
+  "trending_snapshot": {
+    "source": "https://huggingface.co/models?library=gguf&pipeline_tag=text-generation&sort=trending",
+    "checked_at": "2026-07-13",
+    "method": "Current trending GGUF text-generation models were compared against the live filename matchers. Creator-published settings were added for useful local families; impractically large and duplicate community variants were not added as separate presets."
+  },
+  "entries": [
+    {
+      "id": "qwen35-9b",
+      "name": "Qwen 3.5 4B / 9B",
+      "patterns": ["qwen3[._-]?5[._-]?(?:4b|9b)"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen3.5-4B",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "Thinking",
+          "mode": "Thinking",
+          "reasoning": "on",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 32768}
+        },
+        {
+          "name": "Coding",
+          "mode": "Thinking / Precise Coding",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 32768}
+        },
+        {
+          "name": "Instruct",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 32768}
+        },
+        {
+          "name": "Instruct Reasoning",
+          "mode": "Instruct / Reasoning Tasks",
+          "reasoning": "off",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 32768}
+        }
+      ]
+    },
+    {
+      "id": "qwen36-27b",
+      "name": "Qwen 3.6 27B",
+      "patterns": ["qwen3[._-]?6[._-]?27b"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen3.6-27B",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Thinking",
+          "mode": "Thinking / General",
+          "reasoning": "on",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 32768}
+        },
+        {
+          "name": "Coding",
+          "mode": "Thinking / Precise Coding",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 32768}
+        },
+        {
+          "name": "Instruct",
+          "mode": "Instruct / Non-Thinking",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 32768}
+        }
+      ]
+    },
+    {
+      "id": "qwen36-35b-a3b",
+      "name": "Qwen 3.6 35B A3B",
+      "patterns": ["qwen3[._-]?6[._-]?35b[._-]?a3b"],
+      "source": {
+        "publisher": "Qwen recommendations mirrored by Unsloth",
+        "url": "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Thinking",
+          "mode": "Thinking / General",
+          "reasoning": "on",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0}
+        },
+        {
+          "name": "Coding",
+          "mode": "Thinking / Precise Coding",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0}
+        },
+        {
+          "name": "Instruct",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0}
+        },
+        {
+          "name": "Instruct Reasoning",
+          "mode": "Instruct / Reasoning Tasks",
+          "reasoning": "off",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0}
+        }
+      ]
+    },
+    {
+      "id": "qwen3-instruct-2507",
+      "name": "Qwen 3 Instruct 2507",
+      "patterns": ["qwen3[._-]?(?:4b|30b[._-]?a3b)[._-]?instruct[._-]?2507"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Instruct",
+          "mode": "Instruct / Non-Thinking",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0}
+        }
+      ]
+    },
+    {
+      "id": "qwen3-coder-30b-a3b",
+      "name": "Qwen 3 Coder 30B A3B Instruct",
+      "patterns": ["qwen3[._-]?coder[._-]?30b[._-]?a3b[._-]?instruct"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Coding",
+          "mode": "Coding / Instruct",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "repeat_penalty": 1.05},
+          "generation": {"n_predict": 65536}
+        }
+      ]
+    },
+    {
+      "id": "qwen3-hybrid",
+      "name": "Qwen 3 Hybrid Thinking",
+      "patterns": ["qwen3(?![._-]?(?:5|6|coder))[._-]?(?:0[._-]?6b|1[._-]?7b|4b|8b|14b|30b[._-]?a3b|32b|235b[._-]?a22b)"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen3-8B",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Thinking",
+          "mode": "Thinking / General",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0.0},
+          "generation": {"n_predict": 32768}
+        },
+        {
+          "name": "Non-Thinking",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0},
+          "generation": {"n_predict": 32768}
+        }
+      ]
+    },
+    {
+      "id": "qwen25-coder-instruct",
+      "name": "Qwen 2.5 Coder Instruct",
+      "patterns": ["qwen2[._-]?5[._-]?(?:coder[._-]?)?(?:0[._-]?5b|1[._-]?5b|3b|7b|14b|32b)[._-]?coder[._-]?instruct", "qwen2[._-]?5[._-]?coder[._-]?(?:0[._-]?5b|1[._-]?5b|3b|7b|14b|32b)[._-]?instruct"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Coding",
+          "mode": "Coding / Instruct",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "repeat_penalty": 1.05}
+        }
+      ]
+    },
+    {
+      "id": "qwen25-instruct",
+      "name": "Qwen 2.5 Instruct",
+      "patterns": ["qwen2[._-]?5[._-]?(?:0[._-]?5b|1[._-]?5b|3b|7b|14b|32b|72b)[._-]?instruct"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Instruct",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "repeat_penalty": 1.05}
+        }
+      ]
+    },
+    {
+      "id": "qwen2-instruct",
+      "name": "Qwen 2 Instruct",
+      "patterns": ["qwen2[._-]?(?:0[._-]?5b|1[._-]?5b|7b|72b)[._-]?instruct"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen2-7B-Instruct",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Instruct",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "repeat_penalty": 1.05}
+        }
+      ]
+    },
+    {
+      "id": "deepseek-r1-series",
+      "name": "DeepSeek R1 Series",
+      "patterns": ["deepseek[._-]?r1(?:[._-]?(?:0528|distill|qwen|llama|zero))*"],
+      "source": {
+        "publisher": "DeepSeek",
+        "url": "https://huggingface.co/deepseek-ai/DeepSeek-R1",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Reasoning",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95},
+          "generation": {"n_predict": 32768}
+        }
+      ]
+    },
+    {
+      "id": "deepseek-v2-chat",
+      "name": "DeepSeek V2 Chat",
+      "patterns": ["deepseek[._-]?v2(?:[._-]?lite)?[._-]?chat"],
+      "source": {
+        "publisher": "DeepSeek",
+        "url": "https://huggingface.co/deepseek-ai/DeepSeek-V2-Lite-Chat",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Chat",
+          "mode": "Chat / General",
+          "sampling": {"temperature": 0.3, "top_p": 0.95}
+        }
+      ]
+    },
+    {
+      "id": "deepseek-v32",
+      "name": "DeepSeek V3.2",
+      "patterns": ["deepseek[._-]?v3[._-]?2(?:[._-]?speciale)?"],
+      "source": {
+        "publisher": "DeepSeek",
+        "url": "https://huggingface.co/deepseek-ai/DeepSeek-V3.2",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Reasoning / Agentic",
+          "sampling": {"temperature": 1.0, "top_p": 0.95}
+        }
+      ]
+    },
+    {
+      "id": "deepseek-v4",
+      "name": "DeepSeek V4",
+      "patterns": ["deepseek[._-]?v4(?:[._-]?(?:flash|pro|dspark))?"],
+      "source": {
+        "publisher": "DeepSeek",
+        "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "General / Reasoning",
+          "sampling": {"temperature": 1.0, "top_p": 1.0}
+        }
+      ]
+    },
+    {
+      "id": "gemma4-12b",
+      "name": "Gemma 4 12B",
+      "patterns": ["gemma[._-]?4[._-]?12b"],
+      "source": {
+        "publisher": "Google",
+        "url": "https://huggingface.co/google/gemma-4-12B",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Standard",
+          "reasoning": "auto",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 64}
+        }
+      ]
+    },
+    {
+      "id": "gemma4-e4b",
+      "name": "Gemma 4 E4B",
+      "patterns": ["gemma[._-]?4[._-]?e4b"],
+      "source": {
+        "publisher": "Google",
+        "url": "https://huggingface.co/google/gemma-4-E4B-it",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Standard",
+          "reasoning": "auto",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 64}
+        }
+      ]
+    },
+    {
+      "id": "gemma4-other",
+      "name": "Gemma 4",
+      "patterns": ["gemma[._-]?4[._-]?(?:31b|26b[._-]?a4b|e2b)", "supergemma4[._-]?26b"],
+      "source": {
+        "publisher": "Google",
+        "url": "https://huggingface.co/google/gemma-4-31B",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Standard",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 64}
+        }
+      ]
+    },
+    {
+      "id": "gemma3-it",
+      "name": "Gemma 3 Instruct",
+      "patterns": ["gemma[._-]?3[._-]?(?:270m|1b|4b|12b|27b)[._-]?(?:it|instruct)"],
+      "source": {
+        "publisher": "Google defaults mirrored in the official GGUF ecosystem",
+        "url": "https://huggingface.co/unsloth/gemma-3-27b-it-GGUF",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 64}
+        }
+      ]
+    },
+    {
+      "id": "glm47-flash",
+      "name": "GLM 4.7 Flash",
+      "patterns": ["glm[._-]?4[._-]?7[._-]?flash"],
+      "source": {
+        "publisher": "Z.ai",
+        "url": "https://huggingface.co/zai-org/GLM-4.7-Flash",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Default (Most Tasks)",
+          "mode": "Thinking / General",
+          "reasoning": "on",
+          "sampling": {"temperature": 1.0, "top_p": 0.95}
+        },
+        {
+          "name": "Terminal / SWE-Bench",
+          "mode": "Agentic / Coding",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.7, "top_p": 1.0},
+          "generation": {"n_predict": 16384, "reasoning_preserve": "on"}
+        },
+        {
+          "name": "Tau2-Bench",
+          "mode": "Agentic / Multi-Turn",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.0},
+          "generation": {"n_predict": 16384, "reasoning_preserve": "on"}
+        }
+      ]
+    },
+    {
+      "id": "glm5-series",
+      "name": "GLM 5 Series",
+      "patterns": ["glm[._-]?5(?:[._-]?2)?(?:[._-]?(?:fp8|nvfp4))?"],
+      "source": {
+        "publisher": "Z.ai",
+        "url": "https://huggingface.co/zai-org/GLM-5.2",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "General / Reasoning",
+          "sampling": {"temperature": 1.0, "top_p": 0.95}
+        }
+      ]
+    },
+    {
+      "id": "minimax-m2-series",
+      "name": "MiniMax M2 Series",
+      "patterns": ["minimax[._-]?m2(?:[._-]?7)?"],
+      "source": {
+        "publisher": "MiniMax AI",
+        "url": "https://huggingface.co/MiniMaxAI/MiniMax-M2.7",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Interleaved Thinking",
+          "reasoning": "on",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 40}
+        }
+      ]
+    },
+    {
+      "id": "nemotron3-nano",
+      "name": "NVIDIA Nemotron 3 Nano",
+      "patterns": ["nemotron[._-]?3[._-]?nano[._-]?(?:4b|30b[._-]?a3b)"],
+      "source": {
+        "publisher": "NVIDIA",
+        "url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Reasoning",
+          "mode": "Reasoning",
+          "reasoning": "on",
+          "sampling": {"temperature": 1.0, "top_p": 1.0}
+        },
+        {
+          "name": "Tool Calling",
+          "mode": "Agentic / Tools",
+          "sampling": {"temperature": 0.6, "top_p": 0.95}
+        }
+      ]
+    },
+    {
+      "id": "llama3-instruct",
+      "name": "Meta Llama 3 Instruct",
+      "patterns": ["(?:meta[._-]?)?llama[._-]?3(?:[._-]?[12])?[._-]?(?:1b|3b|8b|70b|405b)[._-]?instruct"],
+      "source": {
+        "publisher": "Meta generation defaults mirrored by Unsloth",
+        "url": "https://huggingface.co/unsloth/Llama-3.1-8B-Instruct-GGUF",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Instruct",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.6, "top_p": 0.9}
+        }
+      ]
+    },
+    {
+      "id": "smollm2-instruct",
+      "name": "SmolLM2 Instruct",
+      "patterns": ["smollm2[._-]?(?:135m|360m|1[._-]?7b)[._-]?instruct"],
+      "source": {
+        "publisher": "Hugging Face",
+        "url": "https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Instruct",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.2, "top_p": 0.9}
+        }
+      ]
+    },
+    {
+      "id": "deepseek-v3",
+      "name": "DeepSeek V3",
+      "patterns": ["deepseek[._-]?v3(?:[._-]?0324)?(?![._-]?2)"],
+      "source": {
+        "publisher": "DeepSeek",
+        "url": "https://huggingface.co/deepseek-ai/DeepSeek-V3-0324",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Chat / General",
+          "sampling": {"temperature": 0.3, "top_p": 0.95}
+        }
+      ]
+    },
+    {
+      "id": "lfm25-8b-a1b",
+      "name": "LFM2.5 8B A1B",
+      "patterns": ["lfm2[._-]?5[._-]?8b[._-]?a1b"],
+      "source": {
+        "publisher": "Liquid AI",
+        "url": "https://huggingface.co/LiquidAI/LFM2.5-8B-A1B",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "General",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.2, "top_k": 80, "repeat_penalty": 1.05}
+        }
+      ]
+    },
+    {
+      "id": "qwen3-coder-next",
+      "name": "Qwen 3 Coder Next",
+      "patterns": ["qwen3[._-]?coder[._-]?next"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen3-Coder-Next",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Coding Agent",
+          "mode": "Coding / Agentic",
+          "reasoning": "auto",
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 40}
+        }
+      ]
+    },
+    {
+      "id": "phi4-reasoning",
+      "name": "Phi 4 Reasoning",
+      "patterns": ["phi[._-]?4[._-]?reasoning"],
+      "source": {
+        "publisher": "Microsoft",
+        "url": "https://huggingface.co/microsoft/Phi-4-reasoning",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Reasoning",
+          "mode": "Reasoning",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.8, "top_p": 0.95, "top_k": 50}
+        }
+      ]
+    },
+    {
+      "id": "phi4-instruct",
+      "name": "Phi 4 Instruct",
+      "patterns": ["phi[._-]?4(?:[._-]?mini)?[._-]?instruct", "(?:^|[/._-])phi[._-]?4(?:[/._-]|$)(?!.*reasoning)"],
+      "source": {
+        "publisher": "Microsoft",
+        "url": "https://huggingface.co/microsoft/phi-4",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Deterministic",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.0}
+        }
+      ]
+    },
+    {
+      "id": "phi35-mini-instruct",
+      "name": "Phi 3.5 Mini Instruct",
+      "patterns": ["phi[._-]?3[._-]?5[._-]?mini[._-]?instruct"],
+      "source": {
+        "publisher": "Microsoft",
+        "url": "https://huggingface.co/microsoft/Phi-3.5-mini-instruct",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Deterministic",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.0}
+        }
+      ]
+    },
+    {
+      "id": "gpt-oss",
+      "name": "OpenAI GPT-OSS",
+      "patterns": ["gpt[._-]?oss[._-]?(?:20b|120b)"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "OpenAI reference inference guidance",
+        "url": "https://developers.openai.com/cookbook/articles/gpt-oss/run-vllm",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "OpenAI Reference",
+          "mode": "Reasoning / Reference",
+          "reasoning": "auto",
+          "sampling": {"temperature": 1.0, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0}
+        }
+      ]
+    },
+    {
+      "id": "mistral7-instruct",
+      "name": "Mistral 7B Instruct",
+      "patterns": ["mistral[._-]?7b[._-]?instruct[._-]?v0[._-]?[123]"],
+      "source": {
+        "publisher": "Mistral AI",
+        "url": "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Creator Example",
+          "mode": "Instruct / Deterministic",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.0}
+        }
+      ]
+    },
+    {
+      "id": "mistral-nemo-instruct",
+      "name": "Mistral Nemo Instruct",
+      "patterns": ["mistral[._-]?nemo[._-]?(?:12b[._-]?)?instruct[._-]?2407"],
+      "source": {
+        "publisher": "Mistral AI",
+        "url": "https://huggingface.co/mistralai/Mistral-Nemo-Instruct-2407",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.3}
+        }
+      ]
+    },
+    {
+      "id": "mistral-small-instruct",
+      "name": "Mistral Small Instruct",
+      "patterns": ["mistral[._-]?small(?:[._-]?3[._-]?2)?[._-]?24b[._-]?instruct[._-]?2506"],
+      "source": {
+        "publisher": "Mistral AI",
+        "url": "https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Instruct / Multimodal",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.15}
+        }
+      ]
+    },
+    {
+      "id": "granite31-instruct",
+      "name": "IBM Granite 3.1 Instruct",
+      "patterns": ["granite[._-]?3[._-]?1[._-]?(?:1b|2b|3b|8b|34b)(?:[._-]?instruct)?"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "IBM Granite official demo",
+        "url": "https://huggingface.co/spaces/ibm-granite/granite-3.1-8b-instruct/blob/main/src/app.py",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "IBM Demo",
+          "mode": "General / Reference",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.7, "top_p": 0.85, "top_k": 50, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.05},
+          "generation": {"n_predict": 1024}
+        }
+      ]
+    },
+    {
+      "id": "granite32-33-instruct",
+      "name": "IBM Granite 3.2 / 3.3 Instruct",
+      "patterns": ["granite[._-]?3[._-]?[23][._-]?(?:1b|2b|3b|8b|34b)(?:[._-]?instruct)?"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "IBM Granite creator quick start",
+        "url": "https://huggingface.co/ibm-granite/granite-3.3-8b-instruct",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "IBM Reference / Greedy",
+          "mode": "General / Deterministic",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.0, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0}
+        }
+      ]
+    },
+    {
+      "id": "granite4-instruct",
+      "name": "IBM Granite 4 / 4.1 Instruct",
+      "patterns": ["granite[._-]?4(?:[._-]?1)?[._-]?(?:2b|3b|8b|34b)(?:[._-]?instruct)?"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "IBM Granite creator quick start",
+        "url": "https://huggingface.co/ibm-granite/granite-4.1-8b",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "IBM Reference / Greedy",
+          "mode": "General / Deterministic",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.0, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0}
+        }
+      ]
+    },
+    {
+      "id": "qwen3-vl-instruct",
+      "name": "Qwen 3 VL Instruct",
+      "patterns": ["qwen3[._-]?vl[._-]?(?:2b|4b|8b|30b[._-]?a3b|32b|235b[._-]?a22b)[._-]?instruct"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Vision Instruct",
+          "mode": "Vision / Instruct",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "repeat_penalty": 1.0}
+        }
+      ]
+    },
+    {
+      "id": "pixtral12b",
+      "name": "Pixtral 12B",
+      "patterns": ["pixtral[._-]?12b[._-]?2409"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "Mistral AI model-card inference examples",
+        "url": "https://huggingface.co/mistralai/Pixtral-12B-2409",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "vLLM Reference",
+          "mode": "Vision / vLLM Reference",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 8192}
+        },
+        {
+          "name": "Mistral Inference Reference",
+          "mode": "Vision / Mistral Reference",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.35, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 256}
+        }
+      ]
+    },
+    {
+      "id": "minicpm-v45",
+      "name": "MiniCPM-V 4.5",
+      "patterns": ["minicpm[._-]?(?:v|o)[._-]?4[._-]?5"],
+      "source": {
+        "publisher": "OpenBMB",
+        "url": "https://huggingface.co/openbmb/MiniCPM-V-4_5",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Vision",
+          "mode": "Vision / General",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20}
+        }
+      ]
+    },
+    {
+      "id": "llava15",
+      "name": "LLaVA 1.5",
+      "patterns": ["llava[._-]?v?1[._-]?5[._-]?(?:7b|13b)"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "LLaVA official quick start and evaluation guidance",
+        "url": "https://github.com/haotian-liu/LLaVA",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "LLaVA Reference / Greedy",
+          "mode": "Vision / Deterministic",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.0, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 512}
+        }
+      ]
+    },
+    {
+      "id": "command-r7b",
+      "name": "Command R7B",
+      "patterns": ["(?:c4ai[._-]?)?command[._-]?r7b[._-]?12[._-]?2024"],
+      "source": {
+        "publisher": "Cohere Labs",
+        "url": "https://huggingface.co/CohereForAI/c4ai-command-r7b-12-2024",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Chat / RAG / Tools",
+          "mode": "Chat / Agentic",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.3}
+        },
+        {
+          "name": "Code",
+          "mode": "Coding / Deterministic",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.0}
+        }
+      ]
+    },
+    {
+      "id": "command-r-series",
+      "name": "Command R / R+",
+      "patterns": ["command[._-]?r(?:[._-]?plus|[+])?(?:[._-]?(?:08[._-]?2024|03[._-]?2024|35b|104b))?"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "Cohere Labs model cards",
+        "url": "https://huggingface.co/CohereLabs/c4ai-command-r-v01",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "Chat / RAG / Tools Reference",
+          "mode": "Chat / Agentic",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.3, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 100}
+        },
+        {
+          "name": "Code / Greedy",
+          "mode": "Coding / Deterministic",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.0, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0}
+        }
+      ]
+    },
+    {
+      "id": "yi15-chat",
+      "name": "Yi 1.5 Chat",
+      "patterns": ["yi[._-]?1[._-]?5[._-]?(?:6b|9b|34b)[._-]?chat"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "01.AI creator quick start",
+        "url": "https://huggingface.co/01-ai/Yi-1.5-9B-Chat",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "01.AI Reference / Greedy",
+          "mode": "Chat / Deterministic",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.0, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0}
+        }
+      ]
+    },
+    {
+      "id": "yi-coder-chat",
+      "name": "Yi Coder Chat",
+      "patterns": ["yi[._-]?coder[._-]?(?:1[._-]?5b|9b)[._-]?chat"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "01.AI creator quick start",
+        "url": "https://huggingface.co/01-ai/Yi-Coder-9B-Chat",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "01.AI Coder Reference / Greedy",
+          "mode": "Coding / Deterministic",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.0, "top_p": 1.0, "top_k": 0, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+          "generation": {"n_predict": 1024}
+        }
+      ]
+    },
+    {
+      "id": "tinyllama-chat",
+      "name": "TinyLlama Chat",
+      "patterns": ["tinyllama[._-]?1[._-]?1b[._-]?chat"],
+      "source": {
+        "publisher": "TinyLlama",
+        "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Creator Example",
+          "mode": "Chat / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.95, "top_k": 50}
+        }
+      ]
+    },
+    {
+      "id": "falcon3-instruct",
+      "name": "Falcon 3 Instruct",
+      "patterns": ["falcon3[._-]?(?:1b|3b|7b|10b)[._-]?instruct"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "Technology Innovation Institute official Falcon 3 demo",
+        "url": "https://huggingface.co/spaces/tiiuae/Falcon3-demo/blob/main/app.py",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "TII Demo",
+          "mode": "Instruct / Reference",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.3, "top_p": 1.0, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.2},
+          "generation": {"n_predict": 1024}
+        }
+      ]
+    },
+    {
+      "id": "ornith10",
+      "name": "Ornith 1.0 9B / 35B",
+      "patterns": ["ornith[._-]?1[._-]?0[._-]?(?:9b|35b)"],
+      "source": {
+        "publisher": "DeepReinforce",
+        "url": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Reasoning / Agentic Coding",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20}
+        }
+      ]
+    },
+    {
+      "id": "qwythos9b-v2",
+      "name": "Qwythos 9B v2",
+      "patterns": ["qwythos[._-]?9b(?:[._-]?(?:v2|claude[._-]?mythos))?"],
+      "source": {
+        "publisher": "Empero AI",
+        "url": "https://huggingface.co/empero-ai/Qwythos-9B-v2-GGUF",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "Recommended",
+          "mode": "Reasoning / General",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "repeat_penalty": 1.05},
+          "generation": {"n_predict": 16384}
+        }
+      ]
+    },
+    {
+      "id": "minicpm5-1b",
+      "name": "MiniCPM5 1B",
+      "patterns": ["minicpm5[._-]?1b"],
+      "source": {
+        "publisher": "OpenBMB",
+        "url": "https://huggingface.co/openbmb/MiniCPM5-1B",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "Thinking",
+          "mode": "Thinking / General",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.9, "top_p": 0.95}
+        },
+        {
+          "name": "Non-Thinking",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.7, "top_p": 0.95}
+        }
+      ]
+    },
+    {
+      "id": "mythos-nano",
+      "name": "Mythos Nano 3B",
+      "patterns": ["mythos[._-]?nano"],
+      "source": {
+        "publisher": "Mythos Nano creator",
+        "url": "https://huggingface.co/squ11z1/Mythos-nano",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "Recommended 0.6",
+          "mode": "Reasoning / Balanced",
+          "reasoning": "auto",
+          "sampling": {"temperature": 0.6},
+          "generation": {"n_predict": 40960}
+        },
+        {
+          "name": "Recommended 1.0",
+          "mode": "Reasoning / Exploratory",
+          "reasoning": "auto",
+          "sampling": {"temperature": 1.0},
+          "generation": {"n_predict": 40960}
+        }
+      ]
+    },
+    {
+      "id": "qwen-agentworld-35b-a3b",
+      "name": "Qwen AgentWorld 35B A3B",
+      "patterns": ["qwen[._-]?agentworld[._-]?35b[._-]?a3b"],
+      "source": {
+        "publisher": "Qwen",
+        "url": "https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B",
+        "checked_at": "2026-07-13"
+      },
+      "profiles": [
+        {
+          "name": "World Model",
+          "mode": "Thinking / Environment Simulation",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20},
+          "generation": {"n_predict": 32768}
+        }
+      ]
+    },
+    {
+      "id": "smollm3",
+      "name": "SmolLM3 3B",
+      "patterns": ["smollm3[._-]?3b"],
+      "source": {
+        "publisher": "Hugging Face",
+        "url": "https://huggingface.co/HuggingFaceTB/SmolLM3-3B",
+        "checked_at": "2026-07-12"
+      },
+      "profiles": [
+        {
+          "name": "Thinking",
+          "mode": "Thinking / General",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95}
+        },
+        {
+          "name": "Non-Thinking",
+          "mode": "Instruct / General",
+          "reasoning": "off",
+          "sampling": {"temperature": 0.6, "top_p": 0.95}
+        }
+      ]
+    }
+  ]
+}

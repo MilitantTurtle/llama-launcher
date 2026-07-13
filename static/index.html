@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Local Model Launchpad</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">LOCAL INFERENCE CONTROL</p>
+        <h1>Model <span>Launchpad</span></h1>
+        <p class="subtitle">Choose a profile, start the server, and keep an eye on it from one place.</p>
+      </div>
+      <div class="hero-actions">
+        <div class="resource-overview" id="resource-card" title="Current GPU VRAM and system RAM usage">
+          <div class="resource-overview-header">
+            <div>
+              <small>MEMORY USAGE</small>
+              <strong>Live system resources</strong>
+            </div>
+            <span>Updates every 5 seconds</span>
+          </div>
+          <div class="resource-meter">
+            <span>GPU VRAM</span>
+            <div class="resource-track" role="progressbar" id="resource-vram-track" aria-label="GPU VRAM usage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="resource-vram-bar"></i></div>
+            <strong id="resource-vram">Checking&hellip;</strong>
+          </div>
+          <div class="resource-meter">
+            <span>SYSTEM RAM</span>
+            <div class="resource-track ram-track" role="progressbar" id="resource-ram-track" aria-label="System RAM usage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="resource-ram-bar"></i></div>
+            <strong id="resource-ram">Checking&hellip;</strong>
+          </div>
+        </div>
+        <div class="hero-button-row">
+        <div class="connection-card">
+          <span class="connection-dot" id="connection-dot"></span>
+          <div>
+            <small>CONTROL PANEL</small>
+            <strong id="connection-label">Connecting…</strong>
+          </div>
+        </div>
+        <div class="service-launcher" id="service-launcher">
+          <div class="connection-card service-card service-split">
+            <a class="service-main-link" id="openwebui-direct-link" href="http://127.0.0.1:8181" target="_blank" rel="noreferrer" title="Open OpenWebUI">
+            <span class="connection-dot" id="openwebui-dot"></span>
+            <span class="service-summary-copy">
+              <small>OPENWEBUI</small>
+              <strong id="openwebui-state">Checking…</strong>
+            </span>
+            <span class="service-caret" aria-hidden="true">⌄</span>
+            </a>
+            <button class="service-menu-toggle" id="services-summary" type="button" aria-expanded="false" aria-label="Open OpenWebUI controls" title="OpenWebUI controls">
+              <span class="service-caret" aria-hidden="true">&#8964;</span>
+            </button>
+          </div>
+          <div class="services-panel" id="services-panel">
+            <div class="service-control-row">
+              <span class="connection-dot" id="openwebui-detail-dot"></span>
+              <div class="service-control-copy">
+                <strong>OpenWebUI</strong>
+                <small id="openwebui-detail-state">Checking status…</small>
+              </div>
+              <div class="service-control-actions">
+                <button class="button secondary service-action" type="button" data-service="openwebui" data-action="start">Start</button>
+                <a class="button service-open-link" id="openwebui-link" href="http://127.0.0.1:8181" target="_blank" rel="noreferrer">Open</a>
+              </div>
+            </div>
+            <div class="service-control-row">
+              <span class="connection-dot" id="openterminal-dot"></span>
+              <div class="service-control-copy">
+                <strong>OpenTerminal</strong>
+                <small id="openterminal-state">Checking status…</small>
+              </div>
+              <div class="service-control-actions">
+                <button class="button secondary service-action" type="button" data-service="openterminal" data-action="start">Start</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <a class="connection-card vane-card" id="vane-link" href="http://127.0.0.1:32761" target="_blank" rel="noreferrer" title="Open Vane">
+          <span class="connection-dot" id="vane-dot"></span>
+          <span class="service-summary-copy">
+            <small>VANE</small>
+            <strong id="vane-state">Checking&hellip;</strong>
+          </span>
+          <span class="vane-open-mark" aria-hidden="true">&#8599;</span>
+        </a>
+        <a class="settings-cog" href="/settings" aria-label="Open launcher settings" title="Launcher settings">&#9881;</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="now-panel" id="now-panel">
+      <div class="now-icon" id="now-icon">Q</div>
+      <div class="now-copy">
+        <span class="section-label">CURRENT SERVER</span>
+        <h2 id="now-title">No model running</h2>
+        <p id="now-detail">Select a launcher below to start llama-server.</p>
+      </div>
+      <div class="now-actions">
+        <a class="button secondary hidden" id="api-link" target="_blank" rel="noreferrer">Open API</a>
+        <button class="button danger hidden" id="stop-button" type="button">Stop server</button>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="Launcher filters">
+      <label class="search-box">
+        <span>⌕</span>
+        <input id="search" type="search" placeholder="Search models, modes, or quants…" autocomplete="off">
+      </label>
+      <div class="toolbar-actions">
+        <div class="filter-row" id="filters"></div>
+        <button class="button add-model-button" id="add-model-button" type="button">+ Add model</button>
+      </div>
+    </section>
+
+    <section id="catalog" class="catalog" aria-live="polite">
+      <div class="loading-card">Loading launchers…</div>
+    </section>
+
+    <section class="log-panel collapsed" id="log-panel">
+      <div class="log-header">
+        <button class="log-toggle" id="log-toggle" type="button" aria-label="Show recent output" aria-expanded="false" aria-controls="log-output">
+          <span class="log-heading">
+            <span class="section-label">RECENT OUTPUT</span>
+            <span id="log-path" class="log-path">No model log yet</span>
+          </span>
+          <span class="log-toggle-icon" aria-hidden="true">⌄</span>
+        </button>
+        <button class="icon-button" id="refresh-log" type="button" title="Refresh log">↻</button>
+      </div>
+      <pre id="log-output">Model output will appear here after launch.</pre>
+    </section>
+
+    <footer>
+      <span id="network-note">Allowed networks loading…</span>
+      <span id="model-port-note">One model at a time</span>
+    </footer>
+  </main>
+  <div class="modal hidden" id="group-model-modal" role="dialog" aria-modal="true" aria-labelledby="group-model-title">
+    <div class="modal-card group-model-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">MODEL ORGANIZATION</p>
+          <h2 id="group-model-title">Change group</h2>
+          <p id="group-model-name">Selected model</p>
+        </div>
+        <button class="modal-close" id="group-model-close" type="button" aria-label="Close change group dialog">&times;</button>
+      </div>
+      <form id="group-model-form">
+        <label class="preset-name-field">Group name<input id="group-model-input" maxlength="60" required autocomplete="off" placeholder="Qwen"></label>
+        <p class="form-note">Models with the same group appear together and share one filter button.</p>
+        <div class="modal-actions">
+          <button class="button secondary" id="group-model-cancel" type="button">Cancel</button>
+          <button class="button" id="group-model-submit" type="submit">Save group</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal hidden" id="remove-model-modal" role="dialog" aria-modal="true" aria-labelledby="remove-model-title">
+    <div class="modal-card remove-model-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow danger-eyebrow">LAUNCHER REGISTRY</p>
+          <h2 id="remove-model-title">Remove model?</h2>
+          <p id="remove-model-name">Selected model</p>
+        </div>
+        <button class="modal-close" id="remove-model-close" type="button" aria-label="Close remove model dialog">&times;</button>
+      </div>
+      <div class="remove-model-warning">
+        <strong>Only the launcher entry will be removed.</strong>
+        <p>The GGUF model and projector files will remain untouched on disk.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="button secondary" id="remove-model-cancel" type="button">Cancel</button>
+        <button class="button danger" id="remove-model-confirm" type="button">Remove from launcher</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="preset-save-modal" role="dialog" aria-modal="true" aria-labelledby="preset-save-title">
+    <div class="modal-card preset-save-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">LAUNCH PRESET</p>
+          <h2 id="preset-save-title">Save current settings</h2>
+          <p>Sampling, image and performance values will be saved together.</p>
+        </div>
+        <button class="modal-close" id="preset-save-close" type="button" aria-label="Close preset settings">&times;</button>
+      </div>
+      <div class="preset-save-body">
+        <div class="preset-current">
+          <span class="section-label">CURRENT PRESET</span>
+          <strong id="preset-current-name">Preset</strong>
+        </div>
+        <label class="preset-name-field">New preset name<input id="preset-new-name" maxlength="60" autocomplete="off"></label>
+        <p class="form-note">Overwrite changes the selected preset. Save as new keeps it and creates another toggle.</p>
+      </div>
+      <div class="modal-actions preset-modal-actions">
+        <button class="button secondary" id="preset-save-cancel" type="button">Cancel</button>
+        <button class="button secondary" id="preset-overwrite" type="button">Overwrite current</button>
+        <button class="button" id="preset-save-new" type="button">Save as new</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="add-model-modal" role="dialog" aria-modal="true" aria-labelledby="add-model-title">
+    <div class="modal-card model-form-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">MODEL REGISTRY</p>
+          <h2 id="add-model-title">Add a model</h2>
+          <p>Register an existing GGUF and optionally apply verified creator presets.</p>
+        </div>
+        <button class="modal-close" id="add-model-close" type="button" aria-label="Close add model">&times;</button>
+      </div>
+      <form id="add-model-form">
+        <div class="settings-grid">
+          <label>Model name<input name="name" required maxlength="100" placeholder="My local model"></label>
+          <label>Family<input name="family" required maxlength="60" value="Custom" placeholder="Custom"></label>
+          <label class="wide-field">Model GGUF path<input name="model_path" required placeholder="C:\Models\...\model.gguf"></label>
+          <label class="wide-field">Projector GGUF path (optional)<input name="mmproj_path" placeholder="C:\Models\...\mmproj.gguf"></label>
+          <label>API alias<input name="alias" maxlength="100" placeholder="Generated from name"></label>
+          <label>Quant label<input name="quant" maxlength="60" value="Custom"></label>
+          <label>Profile name<input name="profile_name" maxlength="60" value="Default"></label>
+          <label>Reasoning
+            <select name="reasoning">
+              <option value="auto">Auto</option>
+              <option value="on">On</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>Context tokens<input name="context" type="number" min="512" max="1010000" step="1" value="32768" required></label>
+          <label>Temperature<input name="temperature" type="number" min="0" max="5" step="0.01" value="0.8" required></label>
+          <label>Top P<input name="top_p" type="number" min="0" max="1" step="0.01" value="0.95" required></label>
+          <label>Top K<input name="top_k" type="number" min="0" max="1000" step="1" value="40" required></label>
+          <label>Min P<input name="min_p" type="number" min="0" max="1" step="0.01" value="0.05" required></label>
+          <label>Presence penalty<input name="presence_penalty" type="number" min="-2" max="2" step="0.05" value="0" required></label>
+          <label>Repeat penalty<input name="repeat_penalty" type="number" min="0" max="5" step="0.05" value="1" required></label>
+        </div>
+        <section class="preset-match hidden" id="preset-match" aria-live="polite">
+          <div class="preset-match-header">
+            <div>
+              <span class="section-label" id="preset-match-heading">CREATOR PRESETS FOUND</span>
+              <strong id="preset-match-name">Matching model</strong>
+            </div>
+            <a id="preset-match-source" href="#" target="_blank" rel="noopener noreferrer">View model card ↗</a>
+          </div>
+          <div class="preset-match-profiles" id="preset-match-profiles"></div>
+          <label class="preset-match-choice" id="preset-match-choice">
+            <input id="use-preset-match" type="checkbox" checked>
+            <span>
+              <strong id="preset-match-choice-label">Add creator-recommended profiles</strong>
+              <small>Only documented values are replaced. Unspecified sampling fields keep the values above.</small>
+            </span>
+          </label>
+          <p>Context is independent of model-card presets and remains at the selected value above.</p>
+        </section>
+        <div class="checkbox-grid">
+          <label><input name="vision" type="checkbox"> Enable projector for this profile</label>
+          <label><input name="no_mmap" type="checkbox"> Disable memory mapping</label>
+        </div>
+        <p class="form-note">Paths must be absolute, existing GGUF files. Additional profiles can be added later in models.json.</p>
+        <div class="modal-actions">
+          <button class="button secondary" id="add-model-cancel" type="button">Cancel</button>
+          <button class="button" id="add-model-submit" type="submit">Add model</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
