@@ -419,6 +419,7 @@ pre { min-height: 170px; max-height: 400px; margin: 0; padding: 18px; overflow: 
 .settings-card-copy label { display: grid; gap: 7px; color: #a5abb8; font-size: .73rem; font-weight: 750; }
 .settings-card-copy input { width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; outline: 0; color: var(--text); background: rgba(255,255,255,.035); font: 700 .76rem/1.2 "Cascadia Code", Consolas, monospace; }
 .settings-card-copy input:focus { border-color: rgba(167,139,250,.55); background: rgba(167,139,250,.05); }
+.settings-note { margin: 9px 0 15px !important; color: var(--muted); font-size: .7rem; line-height: 1.55; }
 .settings-service-toggle { display: flex !important; align-items: center; gap: 10px; margin-bottom: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.025); cursor: pointer; }
 .settings-service-toggle input { width: 17px; height: 17px; flex: 0 0 auto; accent-color: var(--violet); }
 .settings-service-toggle span { display: grid; gap: 3px; }

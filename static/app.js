@@ -65,7 +65,13 @@ function renderServices() {
   const setServiceState = (dotId, labelId, service) => {
     const live = Boolean(service?.live);
     el(dotId).classList.toggle("online", live);
-    el(labelId).textContent = live ? "Connected" : "Disconnected";
+    el(labelId).textContent = live
+      ? service?.managed
+        ? "Connected · managed"
+        : service?.control_note === "Status only"
+          ? "Connected"
+          : "Connected · external"
+      : "Disconnected";
   };
   setServiceState("openwebui-dot", "openwebui-state", openwebui);
   setServiceState("openwebui-detail-dot", "openwebui-detail-state", openwebui);
@@ -76,7 +82,9 @@ function renderServices() {
   if (state.services.vane?.open_url) el("vane-link").href = state.services.vane.open_url;
   document.querySelectorAll(".service-action").forEach((button) => {
     const service = state.services[button.dataset.service];
-    button.disabled = button.dataset.action === "start" && Boolean(service?.live);
+    const permission = `can_${button.dataset.action}`;
+    button.disabled = !Boolean(service?.[permission]);
+    button.title = service?.control_note || "";
   });
 }
 
@@ -124,12 +132,13 @@ async function controlExternalService(button) {
   const action = button.dataset.action;
   document.querySelectorAll(".service-action").forEach((item) => { item.disabled = true; });
   const labelId = serviceId === "openwebui" ? "openwebui-detail-state" : "openterminal-state";
-  el(labelId).textContent = "Starting…";
+  const progress = { start: "Starting…", stop: "Stopping…", restart: "Restarting…" };
+  el(labelId).textContent = progress[action] || "Working…";
   try {
     const result = await request(`/api/services/${serviceId}/${action}`, { method: "POST", body: "{}" });
     state.services[serviceId] = result;
     renderServices();
-    toast(`${result.name} ${action} requested`);
+    toast(`${result.name} ${action} complete`);
     setTimeout(refreshServices, 1200);
     setTimeout(refreshServices, 4000);
   } catch (error) {

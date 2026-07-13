@@ -71,11 +71,17 @@ Set `OPENWEBUI_ROOT` if you want the optional local service controls to use an O
 
 `server.device` accepts `auto`, `none` for CPU-only, or a device identifier reported by `llama-server.exe --list-devices`, such as `CUDA0` or `Vulkan0`. Automatic mode omits the `--device` argument and lets llama.cpp select from the backends compiled into that binary.
 
+## Optional service controls
+
+The settings page accepts the OpenWebUI installation folder containing `Start-OpenWebUI.ps1`. OpenTerminal is expected in its `OpenTerminal` subfolder. Once Launchpad starts either service, its Start, Stop, and Restart controls remain available across Launchpad restarts.
+
+Launchpad records the exact launcher and listening-process IDs, executable paths, ports, and Windows process-creation identities in the ignored local file `managed-services.json`. It only stops a service while all of that identity still matches. A service that was already running externally remains visible as connected but unmanaged; stop it manually once, then use Launchpad's Start button to place it under managed control. Vane remains a status link because it may be remote.
+
 ## Duplicate-launch safety
 
 Each installation owns a Windows named mutex derived from its absolute folder. Starting the same installation twice opens the existing interface and exits; it does not kill processes by executable name or by port. Separate copies in separate folders remain independent.
 
-Launchpad only stops a model process created by the currently running Launchpad instance, after verifying its executable path. It never adopts an already-running or stale `llama-server.exe`. If a different process owns the configured model port, launching is refused without terminating that process. Optional OpenWebUI and OpenTerminal controls are start-only because ownership of processes created by their external scripts cannot be proven safely.
+Launchpad persists the exact PID, executable path, listening port, and Windows process-creation identity for a `llama-server.exe` it starts. A restarted Launchpad can reclaim and stop that same verified process. Stale or mismatched records are discarded, and if a different process owns the configured model port, launching is refused without terminating that process.
 
 ## Development checks
 
