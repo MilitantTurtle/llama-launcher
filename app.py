@@ -445,25 +445,39 @@ def choose_gguf_file(initial_path: str, default_directory: Path, title: str) -> 
     return str(selected_path)
 
 
-def is_local_machine_address(value: str) -> bool:
+def normalized_ip_address(value: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
     try:
         address = ipaddress.ip_address(value.split("%", 1)[0])
         if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
             address = address.ipv4_mapped
     except ValueError:
+        return None
+    return address
+
+
+def is_local_machine_address(value: str, connection_local_address: str = "") -> bool:
+    address = normalized_ip_address(value)
+    if address is None:
         return False
     if address.is_loopback:
+        return True
+
+    # A browser using one of this host's own LAN addresses produces an accepted
+    # connection with the same normalized address at both endpoints. Comparing
+    # the live connection is reliable even when hostname resolution temporarily
+    # omits an active interface on a multi-adapter Windows host.
+    local_endpoint = normalized_ip_address(connection_local_address)
+    if local_endpoint is not None and address == local_endpoint:
         return True
 
     local_addresses = set()
     for hostname in {socket.gethostname(), socket.getfqdn()}:
         try:
             for info in socket.getaddrinfo(hostname, None):
-                candidate = ipaddress.ip_address(info[4][0].split("%", 1)[0])
-                if isinstance(candidate, ipaddress.IPv6Address) and candidate.ipv4_mapped:
-                    candidate = candidate.ipv4_mapped
-                local_addresses.add(candidate)
-        except (OSError, ValueError):
+                candidate = normalized_ip_address(info[4][0])
+                if candidate is not None:
+                    local_addresses.add(candidate)
+        except OSError:
             continue
     return address in local_addresses
 
@@ -2210,7 +2224,11 @@ class RequestHandler(BaseHTTPRequestHandler):
             return False
 
     def _client_is_local_machine(self) -> bool:
-        return is_local_machine_address(self.client_address[0])
+        try:
+            connection_local_address = self.connection.getsockname()[0]
+        except OSError:
+            connection_local_address = ""
+        return is_local_machine_address(self.client_address[0], connection_local_address)
 
     def _security_headers(self) -> None:
         self.send_header("X-Content-Type-Options", "nosniff")
