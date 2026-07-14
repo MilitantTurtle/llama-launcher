@@ -5,5 +5,6 @@
   "openterminal_url": "http://127.0.0.1:8765",
   "vane_enabled": false,
   "vane_url": "http://127.0.0.1:32761",
-  "llama_server_executable": "C:\\path\\to\\llama-server.exe"
+  "llama_server_executable": "C:\\path\\to\\llama-server.exe",
+  "llama_mayhem": false
 }

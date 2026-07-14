@@ -233,6 +233,7 @@ def load_user_settings(default_executable: str) -> dict:
             "vane_enabled": False,
             "vane_url": "http://127.0.0.1:32761",
             "llama_server_executable": default_executable,
+            "llama_mayhem": False,
         }
     openwebui_enabled = data.get("openwebui_enabled", False)
     if not isinstance(openwebui_enabled, bool):
@@ -240,6 +241,9 @@ def load_user_settings(default_executable: str) -> dict:
     vane_enabled = data.get("vane_enabled", False)
     if not isinstance(vane_enabled, bool):
         raise ValueError("vane_enabled must be true or false")
+    llama_mayhem = data.get("llama_mayhem", False)
+    if not isinstance(llama_mayhem, bool):
+        raise ValueError("llama_mayhem must be true or false")
     return {
         "openwebui_enabled": openwebui_enabled,
         "openwebui_root": normalize_service_root(data.get("openwebui_root", str(DEFAULT_OPENWEBUI_ROOT))),
@@ -248,6 +252,7 @@ def load_user_settings(default_executable: str) -> dict:
         "vane_enabled": vane_enabled,
         "vane_url": normalize_service_url(data.get("vane_url", "http://127.0.0.1:32761"), "Vane"),
         "llama_server_executable": validate_server_executable(data.get("llama_server_executable")),
+        "llama_mayhem": llama_mayhem,
     }
 
 
@@ -465,6 +470,7 @@ def is_local_machine_address(value: str) -> bool:
 
 def service_status(config: dict) -> dict:
     result = {}
+    llama_mayhem = bool(config.get("llama_mayhem", False))
     for service_id, spec in service_definitions(config).items():
         managed = False
         listening = False
@@ -479,10 +485,12 @@ def service_status(config: dict) -> dict:
             "open_url": spec["open_url"],
             "managed": managed,
             "can_start": "script" in spec and not listening,
-            "can_stop": managed,
-            "can_restart": managed,
+            "can_stop": managed or (llama_mayhem and listening and "script" in spec),
+            "can_restart": managed or (llama_mayhem and listening and "script" in spec),
             "control_note": (
-                "Managed by this Launchpad installation"
+                "Llama Mayhem can forcibly stop any process listening on this port"
+                if llama_mayhem and listening and "script" in spec
+                else "Managed by this Launchpad installation"
                 if managed
                 else "Connected externally; stop it manually once to hand control to Launchpad"
                 if live and "script" in spec
@@ -662,6 +670,30 @@ def stop_managed_service(service_id: str, spec: dict, record: dict) -> None:
     update_managed_service_record(service_id, None)
 
 
+def stop_service_listeners(spec: dict) -> list[int]:
+    pids = listener_pids(spec["port"])
+    for pid in pids:
+        if os.name == "nt":
+            result = subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            if result.returncode not in {0, 128}:
+                raise RuntimeError(result.stderr.strip() or result.stdout.strip() or f"Unable to stop PID {pid}")
+        else:
+            os.kill(pid, 15)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline and listener_pids(spec["port"]):
+        time.sleep(0.2)
+    if listener_pids(spec["port"]):
+        raise RuntimeError(f"{spec['name']} did not release port {spec['port']}")
+    return pids
+
+
 def control_service(config: dict, service_id: str, action: str) -> dict:
     if action not in {"start", "stop", "restart"}:
         raise ValueError("Service action must be start, stop, or restart")
@@ -669,12 +701,26 @@ def control_service(config: dict, service_id: str, action: str) -> dict:
     if service_id not in definitions:
         raise KeyError("Unknown service")
     spec = definitions[service_id]
+    llama_mayhem = bool(config.get("llama_mayhem", False))
     record = validated_managed_service_record(service_id, spec)
     listening = bool(listener_pids(spec["port"]))
     if record is None and load_managed_service_state()["services"].get(service_id) is not None:
         update_managed_service_record(service_id, None)
     if action == "start" and listening:
         return service_status(config)[service_id]
+    if action in {"stop", "restart"} and listening and llama_mayhem:
+        stopped_pids = stop_service_listeners(spec)
+        update_managed_service_record(service_id, None)
+        LOGGER.warning(
+            "Llama Mayhem action=%s service=%s terminated_listener_pids=%s",
+            action,
+            service_id,
+            stopped_pids,
+        )
+        if action == "stop":
+            return service_status(config)[service_id]
+        record = None
+        listening = False
     if action in {"stop", "restart"} and listening and record is None:
         raise RuntimeError(
             f"Refusing to {action} {spec['name']} because the listener was not started by this Launchpad installation"
@@ -814,6 +860,7 @@ def load_config() -> dict:
     config["openterminal_url"] = user_settings["openterminal_url"]
     config["vane_enabled"] = user_settings["vane_enabled"]
     config["vane_url"] = user_settings["vane_url"]
+    config["llama_mayhem"] = user_settings["llama_mayhem"]
     config["_networks"] = [ipaddress.ip_network(value, strict=False) for value in config["allowed_networks"]]
     config["_models_path"] = (APP_DIR / config["models_file"]).resolve()
     return config
@@ -1422,6 +1469,68 @@ def same_executable(pid: int, expected_path: str) -> bool:
     return os.path.normcase(os.path.abspath(actual_path)) == os.path.normcase(os.path.abspath(expected_path))
 
 
+def llama_server_process_ids() -> list[int]:
+    if os.name != "nt":
+        return []
+
+    class PROCESSENTRY32W(ctypes.Structure):
+        _fields_ = (
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ProcessID", wintypes.DWORD),
+            ("th32DefaultHeapID", ctypes.c_size_t),
+            ("th32ModuleID", wintypes.DWORD),
+            ("cntThreads", wintypes.DWORD),
+            ("th32ParentProcessID", wintypes.DWORD),
+            ("pcPriClassBase", wintypes.LONG),
+            ("dwFlags", wintypes.DWORD),
+            ("szExeFile", wintypes.WCHAR * 260),
+        )
+
+    kernel32 = ctypes.windll.kernel32
+    kernel32.CreateToolhelp32Snapshot.argtypes = (wintypes.DWORD, wintypes.DWORD)
+    kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    kernel32.Process32FirstW.argtypes = (wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32W))
+    kernel32.Process32FirstW.restype = wintypes.BOOL
+    kernel32.Process32NextW.argtypes = (wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32W))
+    kernel32.Process32NextW.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    snapshot = kernel32.CreateToolhelp32Snapshot(0x00000002, 0)
+    if snapshot == ctypes.c_void_p(-1).value:
+        return []
+    result = []
+    try:
+        entry = PROCESSENTRY32W()
+        entry.dwSize = ctypes.sizeof(PROCESSENTRY32W)
+        available = kernel32.Process32FirstW(snapshot, ctypes.byref(entry))
+        while available:
+            if entry.szExeFile.casefold() == "llama-server.exe":
+                result.append(int(entry.th32ProcessID))
+            available = kernel32.Process32NextW(snapshot, ctypes.byref(entry))
+    finally:
+        kernel32.CloseHandle(snapshot)
+    return sorted(set(result))
+
+
+def listening_ports_by_pid() -> dict[int, list[int]]:
+    completed = subprocess.run(
+        ["netstat", "-ano", "-p", "TCP"],
+        capture_output=True,
+        text=True,
+        timeout=8,
+        check=False,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
+    result: dict[int, set[int]] = {}
+    pattern = re.compile(r"^\s*TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)\s*$", re.IGNORECASE)
+    for line in completed.stdout.splitlines():
+        match = pattern.match(line)
+        if match:
+            result.setdefault(int(match.group(2)), set()).add(int(match.group(1)))
+    return {pid: sorted(ports) for pid, ports in result.items()}
+
+
 def process_creation_marker(pid: int) -> int | None:
     if os.name != "nt":
         try:
@@ -1544,6 +1653,8 @@ class LaunchManager:
         self.log_handle = None
         self.current: dict | None = None
         self.last: dict | None = None
+        self._last_discovery = 0.0
+        self._last_external_port_check = 0.0
         self._recover_active_session()
 
     def _clear_active_session(self) -> None:
@@ -1572,6 +1683,12 @@ class LaunchManager:
             LOGGER.exception("Unable to persist active model session")
 
     def _recover_active_session(self) -> None:
+        if self.config.get("llama_mayhem", False):
+            self._recover_mayhem_session()
+        else:
+            self._recover_managed_session()
+
+    def _recover_managed_session(self) -> None:
         if not ACTIVE_MODEL_PATH.is_file():
             return
         try:
@@ -1610,6 +1727,168 @@ class LaunchManager:
             self.current = None
             self._clear_active_session()
 
+    def _restore_mayhem_process(self, current: dict, pid: int, source: str, *, owned: bool = False) -> bool:
+        profile_id = current.get("id")
+        if profile_id is not None:
+            try:
+                self.registry.resolve(profile_id)
+            except KeyError:
+                return False
+        restored = dict(current)
+        restored.pop("status", None)
+        restored["pid"] = pid
+        restored["started_epoch"] = float(restored.get("started_epoch", time.time()))
+        restored.setdefault(
+            "started_at",
+            datetime.fromtimestamp(restored["started_epoch"], timezone.utc).isoformat(),
+        )
+        restored.setdefault("custom_options", {})
+        restored.setdefault("resolved_options", {})
+        restored.setdefault("process_executable", process_image_path(pid))
+        restored.setdefault("process_started_marker", process_creation_marker(pid))
+        restored["owned"] = owned
+        restored["recovered"] = True
+        self.process = RecoveredProcess(pid)
+        self.current = restored
+        self._persist_active_session()
+        LOGGER.warning(
+            "Llama Mayhem adopted llama-server: profile=%s pid=%s source=%s owned=%s",
+            profile_id,
+            pid,
+            source,
+            owned,
+        )
+        return True
+
+    def _recover_mayhem_session(self) -> None:
+        server_port = int(self.config["server"]["port"])
+        expected_executable = self.config["server"]["executable"]
+        ports_by_pid = listening_ports_by_pid()
+        llama_pids = set(llama_server_process_ids())
+        verified = {
+            pid
+            for pid in llama_pids
+            if server_port in ports_by_pid.get(pid, []) and same_executable(pid, expected_executable)
+        }
+        if not llama_pids:
+            self._clear_active_session()
+            return
+
+        if ACTIVE_MODEL_PATH.is_file():
+            try:
+                with ACTIVE_MODEL_PATH.open("r", encoding="utf-8") as handle:
+                    saved = json.load(handle)
+                current = saved.get("current", {})
+                pid = int(current.get("pid", 0))
+                external = bool(current.get("external"))
+                process_valid = pid in llama_pids if external else pid in llama_pids and same_executable(pid, expected_executable)
+                identity = {
+                    "executable": current.get("process_executable"),
+                    "created": current.get("process_started_marker"),
+                }
+                safely_owned = bool(
+                    current.get("owned")
+                    and int(current.get("port", -1)) == server_port
+                    and pid in listener_pids(server_port)
+                    and process_identity_matches(pid, identity)
+                )
+                if (
+                    saved.get("version") == 1
+                    and int(saved.get("server_port", -1)) == server_port
+                    and os.path.normcase(os.path.abspath(str(saved.get("executable", ""))))
+                    == os.path.normcase(os.path.abspath(expected_executable))
+                    and process_valid
+                    and self._restore_mayhem_process(current, pid, "state", owned=safely_owned)
+                ):
+                    return
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                LOGGER.warning("Unable to restore active model session in Llama Mayhem")
+            self._clear_active_session()
+
+        launcher_log = LOG_DIR / "web-launcher.log"
+        if launcher_log.is_file():
+            with launcher_log.open("rb") as handle:
+                handle.seek(0, os.SEEK_END)
+                size = handle.tell()
+                handle.seek(max(0, size - 2_097_152), os.SEEK_SET)
+                recent = handle.read().decode("utf-8", errors="replace")
+            starts = re.findall(r"Started profile=([^\s]+) pid=(\d+)", recent)
+            for profile_id, raw_pid in reversed(starts):
+                pid = int(raw_pid)
+                if pid not in verified:
+                    continue
+                try:
+                    _, resolved, details = self.build_command(profile_id)
+                except (KeyError, FileNotFoundError, ValueError):
+                    continue
+                model = details["model"]
+                profile = details["profile"]
+                candidates = sorted(
+                    LOG_DIR.glob(f"model-{profile_id}-*.log"),
+                    key=lambda item: item.stat().st_ctime,
+                    reverse=True,
+                )
+                log_path = candidates[0] if candidates else None
+                timestamp_match = re.search(r"-(\d{8}-\d{6})\.log$", log_path.name) if log_path else None
+                started_epoch = (
+                    datetime.strptime(timestamp_match.group(1), "%Y%m%d-%H%M%S").timestamp()
+                    if timestamp_match
+                    else log_path.stat().st_ctime
+                    if log_path
+                    else time.time()
+                )
+                current = {
+                    "id": profile_id,
+                    "model_id": model["id"],
+                    "name": f"{model['name']} — {profile['name']}",
+                    "group": model["name"],
+                    "mode": profile["mode"],
+                    "vision": resolved["vision"],
+                    "pid": pid,
+                    "port": server_port,
+                    "started_at": datetime.fromtimestamp(started_epoch, timezone.utc).isoformat(),
+                    "started_epoch": started_epoch,
+                    "log_file": str(log_path) if log_path else None,
+                    "custom_options": {},
+                    "resolved_options": resolved,
+                }
+                if self._restore_mayhem_process(current, pid, "launch-log"):
+                    return
+
+        candidates = sorted(
+            llama_pids,
+            key=lambda pid: (
+                server_port not in ports_by_pid.get(pid, []),
+                not bool(ports_by_pid.get(pid)),
+                pid,
+            ),
+        )
+        pid = candidates[0]
+        ports = ports_by_pid.get(pid, [])
+        detected_port = server_port if server_port in ports else ports[0] if ports else None
+        mode = f"Detected external process · port {detected_port}" if detected_port else "Detected external process · not listening"
+        self._restore_mayhem_process(
+            {
+                "id": None,
+                "model_id": None,
+                "name": "External llama-server",
+                "group": "External",
+                "mode": mode,
+                "vision": False,
+                "pid": pid,
+                "port": detected_port,
+                "external": True,
+                "process_executable": process_image_path(pid),
+                "started_at": utc_now(),
+                "started_epoch": time.time(),
+                "log_file": None,
+                "custom_options": {},
+                "resolved_options": {},
+            },
+            pid,
+            "process-scan",
+        )
+
     def _refresh_locked(self) -> None:
         if self.process is None:
             return
@@ -1625,6 +1904,38 @@ class LaunchManager:
         self.current = None
         self._clear_active_session()
 
+    def _refresh_external_port_locked(self) -> None:
+        if not self.config.get("llama_mayhem", False) or not self.current or not self.current.get("external"):
+            return
+        now = time.monotonic()
+        if now - self._last_external_port_check < 2.0:
+            return
+        self._last_external_port_check = now
+        ports = listening_ports_by_pid().get(int(self.current["pid"]), [])
+        server_port = int(self.config["server"]["port"])
+        detected_port = server_port if server_port in ports else ports[0] if ports else None
+        if detected_port == self.current.get("port"):
+            return
+        self.current["port"] = detected_port
+        self.current["mode"] = (
+            f"Detected external process · port {detected_port}"
+            if detected_port
+            else "Detected external process · not listening"
+        )
+        self._persist_active_session()
+
+    def set_llama_mayhem(self, enabled: bool) -> None:
+        with self.lock:
+            self.config["llama_mayhem"] = bool(enabled)
+            if not enabled and self.current and not self.current.get("owned"):
+                LOGGER.info("Llama Mayhem disabled; detaching unowned llama-server pid=%s", self.current.get("pid"))
+                self._close_log_locked()
+                self.process = None
+                self.current = None
+                self._clear_active_session()
+            elif enabled and self.process is None:
+                self._last_discovery = 0.0
+
 
     def _close_log_locked(self) -> None:
         if self.log_handle is not None:
@@ -1637,6 +1948,11 @@ class LaunchManager:
     def status(self) -> dict:
         with self.lock:
             self._refresh_locked()
+            now = time.monotonic()
+            if self.config.get("llama_mayhem", False) and self.process is None and now - self._last_discovery >= 2.0:
+                self._last_discovery = now
+                self._recover_mayhem_session()
+            self._refresh_external_port_locked()
             if self.process is None:
                 return {"status": "idle", "last": self.last}
             result = dict(self.current or {})
@@ -1801,17 +2117,26 @@ class LaunchManager:
                 raise RuntimeError("No model is running")
             process = self.process
             current = dict(self.current or {})
-            if not current.get("owned") or process is None or not isinstance(getattr(process, "pid", None), int):
+            llama_mayhem = bool(self.config.get("llama_mayhem", False))
+            if not llama_mayhem and not current.get("owned"):
                 raise RuntimeError("Refusing to stop a process that was not started by this Launchpad instance")
+            if process is None or not isinstance(getattr(process, "pid", None), int):
+                raise RuntimeError("Refusing to stop an invalid process record")
             expected_executable = current.get("process_executable")
-            if os.name == "nt" and (
+            if not llama_mayhem and os.name == "nt" and (
                 not isinstance(expected_executable, str)
                 or not same_executable(process.pid, expected_executable)
             ):
                 raise RuntimeError("Refusing to stop the process because its executable identity could not be verified")
-            if current.get("recovered") and process_creation_marker(process.pid) != current.get("process_started_marker"):
+            if not llama_mayhem and current.get("recovered") and process_creation_marker(process.pid) != current.get("process_started_marker"):
                 raise RuntimeError("Refusing to stop the recovered process because its start identity no longer matches")
-            LOGGER.info("Stopping profile=%s pid=%s", current.get("id"), process.pid)
+            LOGGER.warning(
+                "Stopping profile=%s pid=%s llama_mayhem=%s owned=%s",
+                current.get("id"),
+                process.pid,
+                llama_mayhem,
+                current.get("owned"),
+            )
             if os.name == "nt":
                 result = subprocess.run(
                     ["taskkill", "/PID", str(process.pid), "/T", "/F"],
@@ -1996,6 +2321,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "vane_enabled": self.server.config["vane_enabled"],
                 "vane_url": self.server.config["vane_url"],
                 "llama_server_executable": self.server.config["server"]["executable"],
+                "llama_mayhem": self.server.config["llama_mayhem"],
                 "settings_file": str(SETTINGS_PATH),
             })
             return
@@ -2062,6 +2388,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                 vane_enabled = body.get("vane_enabled")
                 if not isinstance(vane_enabled, bool):
                     raise ValueError("vane_enabled must be true or false")
+                llama_mayhem = body.get("llama_mayhem")
+                if not isinstance(llama_mayhem, bool):
+                    raise ValueError("llama_mayhem must be true or false")
                 settings = {
                     "openwebui_enabled": openwebui_enabled,
                     "openwebui_root": normalize_service_root(body.get("openwebui_root")),
@@ -2070,6 +2399,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "vane_enabled": vane_enabled,
                     "vane_url": normalize_service_url(body.get("vane_url"), "Vane"),
                     "llama_server_executable": validate_server_executable(body.get("llama_server_executable")),
+                    "llama_mayhem": llama_mayhem,
                 }
                 with self.server.settings_lock:
                     persist_user_settings(settings)
@@ -2080,7 +2410,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.server.config["vane_enabled"] = settings["vane_enabled"]
                     self.server.config["vane_url"] = settings["vane_url"]
                     self.server.config["server"]["executable"] = settings["llama_server_executable"]
-                LOGGER.info("Updated user settings: openwebui_enabled=%s openwebui_root=%s openwebui=%s openterminal=%s vane_enabled=%s vane=%s executable=%s", settings["openwebui_enabled"], settings["openwebui_root"], settings["openwebui_url"], settings["openterminal_url"], settings["vane_enabled"], settings["vane_url"], settings["llama_server_executable"])
+                    self.server.manager.set_llama_mayhem(settings["llama_mayhem"])
+                LOGGER.info("Updated user settings: openwebui_enabled=%s openwebui_root=%s openwebui=%s openterminal=%s vane_enabled=%s vane=%s executable=%s llama_mayhem=%s", settings["openwebui_enabled"], settings["openwebui_root"], settings["openwebui_url"], settings["openterminal_url"], settings["vane_enabled"], settings["vane_url"], settings["llama_server_executable"], settings["llama_mayhem"])
                 self._json(HTTPStatus.OK, {**settings, "settings_file": str(SETTINGS_PATH)})
                 return
             if route == "/api/launch":

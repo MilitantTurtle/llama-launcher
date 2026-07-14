@@ -87,6 +87,26 @@
         </div>
       </section>
 
+      <section class="settings-page-card mayhem-card">
+        <div class="settings-card-icon mayhem-icon">!</div>
+        <div class="settings-card-copy">
+          <span class="section-label danger-eyebrow">UNSAFE PROCESS CONTROL</span>
+          <h2>Llama Mayhem</h2>
+          <p>Use private-build-style process discovery and termination when strict ownership checks get in your way.</p>
+          <label class="settings-service-toggle mayhem-toggle">
+            <input id="settings-llama-mayhem" name="llama_mayhem" type="checkbox">
+            <span>
+              <strong>Enable Llama Mayhem</strong>
+              <small>Adopt external llama-server processes and allow force-stopping any listener on configured OpenWebUI or OpenTerminal ports.</small>
+            </span>
+          </label>
+          <div class="mayhem-warning">
+            <strong>This can terminate processes Launchpad did not start.</strong>
+            <p>Only enable it when those configured ports and llama-server processes are under your control. Strict ownership and process-identity checks remain the default while it is off.</p>
+          </div>
+        </div>
+      </section>
+
       <section class="settings-save-bar">
         <div>
           <span class="section-label">PERSISTENCE</span>

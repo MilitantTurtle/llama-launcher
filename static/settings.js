@@ -1,5 +1,6 @@
 let settingsToken = "";
 let toastTimer;
+let initialLlamaMayhem = false;
 
 const el = (id) => document.getElementById(id);
 
@@ -39,6 +40,8 @@ async function initializeSettings() {
     el("settings-vane-enabled").checked = settings.vane_enabled;
     el("settings-vane").value = settings.vane_url;
     el("settings-llama-server").value = settings.llama_server_executable;
+    el("settings-llama-mayhem").checked = settings.llama_mayhem;
+    initialLlamaMayhem = settings.llama_mayhem;
     el("settings-file").textContent = settings.settings_file;
     updatePreview("settings-openwebui-preview", settings.openwebui_url);
     updatePreview("settings-vane-preview", settings.vane_url);
@@ -56,6 +59,13 @@ el("settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const submit = el("settings-submit");
   submit.disabled = true;
+  const llamaMayhem = el("settings-llama-mayhem").checked;
+  if (llamaMayhem && !initialLlamaMayhem && !window.confirm(
+    "Enable Llama Mayhem? Launchpad may forcibly terminate processes it did not start."
+  )) {
+    submit.disabled = false;
+    return;
+  }
   try {
     const settings = await request("/api/settings", {
       method: "POST",
@@ -67,6 +77,7 @@ el("settings-form").addEventListener("submit", async (event) => {
         vane_enabled: el("settings-vane-enabled").checked,
         vane_url: el("settings-vane").value.trim(),
         llama_server_executable: el("settings-llama-server").value.trim(),
+        llama_mayhem: llamaMayhem,
       }),
     });
     el("settings-openwebui-enabled").checked = settings.openwebui_enabled;
@@ -76,6 +87,8 @@ el("settings-form").addEventListener("submit", async (event) => {
     el("settings-vane-enabled").checked = settings.vane_enabled;
     el("settings-vane").value = settings.vane_url;
     el("settings-llama-server").value = settings.llama_server_executable;
+    el("settings-llama-mayhem").checked = settings.llama_mayhem;
+    initialLlamaMayhem = settings.llama_mayhem;
     el("settings-file").textContent = settings.settings_file;
     updatePreview("settings-openwebui-preview", settings.openwebui_url);
     updatePreview("settings-vane-preview", settings.vane_url);

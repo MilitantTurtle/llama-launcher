@@ -91,6 +91,30 @@ class SafetyTests(unittest.TestCase):
         self.assertNotEqual(first, other)
         self.assertTrue(first.startswith("Local\\LocalModelLaunchpad-"))
 
+    def test_existing_settings_default_llama_mayhem_off(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            executable = root / "llama-server.exe"
+            executable.write_bytes(b"")
+            settings_path = root / "settings.json"
+            settings_path.write_text(
+                json.dumps(
+                    {
+                        "openwebui_enabled": False,
+                        "openwebui_root": str(root),
+                        "openwebui_url": "http://127.0.0.1:8181",
+                        "openterminal_url": "http://127.0.0.1:8765",
+                        "vane_enabled": False,
+                        "vane_url": "http://127.0.0.1:32761",
+                        "llama_server_executable": str(executable),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch.object(app, "SETTINGS_PATH", settings_path):
+                settings = app.load_user_settings(str(executable))
+            self.assertFalse(settings["llama_mayhem"])
+
     def test_display_name_cannot_spoof_a_preset_match(self) -> None:
         library = app.ModelCardPresetLibrary(app.PRESET_LIBRARY_PATH)
         self.assertIsNone(library.match("C:/models/unrelated.gguf", name="Qwen3.5 9B"))
@@ -129,6 +153,36 @@ class SafetyTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "not started by this Launchpad"):
                     app.control_service(self.service_config(root), "openwebui", "restart")
             run.assert_not_called()
+
+    def test_llama_mayhem_allows_stopping_an_unowned_optional_service(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = {**self.service_config(root), "llama_mayhem": True}
+            expected = {"id": "openwebui", "live": False}
+            with mock.patch.object(app, "validated_managed_service_record", return_value=None), mock.patch.object(
+                app, "load_managed_service_state", return_value={"version": 1, "services": {}}
+            ), mock.patch.object(app, "listener_pids", return_value=[4321]), mock.patch.object(
+                app, "stop_service_listeners", return_value=[4321]
+            ) as stop, mock.patch.object(app, "update_managed_service_record") as update, mock.patch.object(
+                app, "service_status", return_value={"openwebui": expected}
+            ):
+                result = app.control_service(config, "openwebui", "stop")
+            self.assertEqual(result, expected)
+            stop.assert_called_once()
+            update.assert_called_once_with("openwebui", None)
+
+    def test_llama_mayhem_force_stops_every_service_listener(self) -> None:
+        spec = {"name": "OpenWebUI", "port": 8181}
+        completed = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.object(app, "listener_pids", side_effect=[[4321, 5432], [], []]), mock.patch.object(
+            app.subprocess, "run", return_value=completed
+        ) as run:
+            stopped = app.stop_service_listeners(spec)
+        self.assertEqual(stopped, [4321, 5432])
+        self.assertEqual(
+            [call.args[0][:3] for call in run.call_args_list],
+            [["taskkill", "/PID", "4321"], ["taskkill", "/PID", "5432"]],
+        )
 
     def test_process_identity_requires_matching_executable_and_start_marker(self) -> None:
         expected = {"executable": "C:/service.exe", "created": 987654}
@@ -195,6 +249,28 @@ class SafetyTests(unittest.TestCase):
             self.assertEqual(manager.process.pid, 4321)
             self.assertTrue(manager.current["recovered"])
 
+    def test_llama_mayhem_discovers_and_adopts_an_external_llama_server(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state_path = root / "active-model.json"
+            config = {
+                "llama_mayhem": True,
+                "server": {"port": 8000, "executable": "C:/llama-server.exe"},
+            }
+            with mock.patch.object(app, "ACTIVE_MODEL_PATH", state_path), mock.patch.object(
+                app, "LOG_DIR", root
+            ), mock.patch.object(app, "llama_server_process_ids", return_value=[4321]), mock.patch.object(
+                app, "listening_ports_by_pid", return_value={4321: [8000]}
+            ), mock.patch.object(app, "same_executable", return_value=False), mock.patch.object(
+                app, "process_image_path", return_value="D:/other/llama-server.exe"
+            ), mock.patch.object(app, "process_creation_marker", return_value=987654):
+                manager = app.LaunchManager(config, object())
+            self.assertIsInstance(manager.process, app.RecoveredProcess)
+            self.assertEqual(manager.process.pid, 4321)
+            self.assertTrue(manager.current["external"])
+            self.assertFalse(manager.current["owned"])
+            self.assertEqual(manager.current["port"], 8000)
+
     def test_stop_refuses_an_unowned_process_without_taskkill(self) -> None:
         manager = app.LaunchManager.__new__(app.LaunchManager)
         manager.lock = threading.RLock()
@@ -208,6 +284,47 @@ class SafetyTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "not started by this Launchpad"):
                 manager.stop()
         run.assert_not_called()
+
+    def test_llama_mayhem_stops_an_unowned_model_process(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = app.LaunchManager.__new__(app.LaunchManager)
+            manager.lock = threading.RLock()
+            manager.process = mock.Mock()
+            manager.process.pid = 1234
+            manager.process.poll.return_value = None
+            manager.process.wait.return_value = 0
+            manager.process.returncode = 0
+            manager.current = {"pid": 1234, "owned": False, "id": None}
+            manager.last = None
+            manager.log_handle = None
+            manager.config = {
+                "llama_mayhem": True,
+                "server": {"executable": "C:/llama-server.exe"},
+            }
+            completed = mock.Mock(returncode=0, stdout="", stderr="")
+            with mock.patch.object(app, "ACTIVE_MODEL_PATH", Path(temporary) / "active-model.json"), mock.patch.object(
+                app.subprocess, "run", return_value=completed
+            ) as run:
+                result = manager.stop()
+            self.assertEqual(result["status"], "idle")
+            self.assertEqual(run.call_args.args[0][:3], ["taskkill", "/PID", "1234"])
+            self.assertIsNone(manager.process)
+
+    def test_disabling_llama_mayhem_detaches_without_stopping_an_unowned_process(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = app.LaunchManager.__new__(app.LaunchManager)
+            manager.lock = threading.RLock()
+            manager.process = mock.Mock()
+            manager.current = {"pid": 1234, "owned": False}
+            manager.last = None
+            manager.log_handle = None
+            manager.config = {"llama_mayhem": True}
+            manager._last_discovery = 1.0
+            with mock.patch.object(app, "ACTIVE_MODEL_PATH", Path(temporary) / "active-model.json"):
+                manager.set_llama_mayhem(False)
+            self.assertFalse(manager.config["llama_mayhem"])
+            self.assertIsNone(manager.process)
+            self.assertIsNone(manager.current)
 
     def test_auto_device_omits_device_argument(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
