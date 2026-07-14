@@ -375,6 +375,94 @@ def validated_managed_service_record(service_id: str, spec: dict) -> dict | None
     return record
 
 
+def registered_model_directory(registry) -> Path:
+    with registry.lock:
+        parents = [
+            str(Path(model["model_path"]).resolve().parent)
+            for model in registry.data.get("models", [])
+            if isinstance(model.get("model_path"), str) and model["model_path"]
+        ]
+    if parents:
+        try:
+            common = Path(os.path.commonpath(parents))
+            if common.is_dir():
+                return common
+        except (OSError, ValueError):
+            pass
+    return Path.home()
+
+
+def choose_gguf_file(initial_path: str, default_directory: Path, title: str) -> str | None:
+    if os.name != "nt":
+        raise RuntimeError("The native GGUF picker is available on Windows only")
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError as exc:
+        raise RuntimeError("The Python installation does not include the Windows file picker") from exc
+
+    initial_directory = default_directory
+    initial_file = ""
+    if initial_path:
+        candidate = Path(initial_path).expanduser()
+        if candidate.is_dir():
+            initial_directory = candidate
+        elif candidate.is_file():
+            initial_directory = candidate.parent
+            initial_file = candidate.name
+        elif candidate.parent.is_dir():
+            initial_directory = candidate.parent
+            initial_file = candidate.name
+
+    root = None
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = filedialog.askopenfilename(
+            parent=root,
+            title=title,
+            initialdir=str(initial_directory),
+            initialfile=initial_file,
+            filetypes=(("GGUF model files", "*.gguf"), ("All files", "*.*")),
+        )
+    except tk.TclError as exc:
+        raise RuntimeError(f"Unable to open the Windows file picker: {exc}") from exc
+    finally:
+        if root is not None:
+            root.destroy()
+
+    if not selected:
+        return None
+    selected_path = Path(selected).resolve()
+    if selected_path.suffix.casefold() != ".gguf" or not selected_path.is_file():
+        raise ValueError("Choose an existing .gguf file")
+    return str(selected_path)
+
+
+def is_local_machine_address(value: str) -> bool:
+    try:
+        address = ipaddress.ip_address(value.split("%", 1)[0])
+        if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+            address = address.ipv4_mapped
+    except ValueError:
+        return False
+    if address.is_loopback:
+        return True
+
+    local_addresses = set()
+    for hostname in {socket.gethostname(), socket.getfqdn()}:
+        try:
+            for info in socket.getaddrinfo(hostname, None):
+                candidate = ipaddress.ip_address(info[4][0].split("%", 1)[0])
+                if isinstance(candidate, ipaddress.IPv6Address) and candidate.ipv4_mapped:
+                    candidate = candidate.ipv4_mapped
+                local_addresses.add(candidate)
+        except (OSError, ValueError):
+            continue
+    return address in local_addresses
+
+
 def service_status(config: dict) -> dict:
     result = {}
     for service_id, spec in service_definitions(config).items():
@@ -1778,6 +1866,7 @@ class LauncherHTTPServer(ThreadingHTTPServer):
         self.token = token
         self.settings_lock = threading.RLock()
         self.service_lock = threading.RLock()
+        self.file_picker_lock = threading.Lock()
 
 
 class RequestHandler(BaseHTTPRequestHandler):
@@ -1794,6 +1883,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             return any(address in network for network in self.server.config["_networks"])
         except ValueError:
             return False
+
+    def _client_is_local_machine(self) -> bool:
+        return is_local_machine_address(self.client_address[0])
 
     def _security_headers(self) -> None:
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -1892,6 +1984,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "performance_defaults": performance_defaults(self.server.config["server"]),
                 "cache_types": CACHE_TYPES,
                 "self_contained": True,
+                "local_file_picker": os.name == "nt" and self._client_is_local_machine(),
             })
             return
         if route == "/api/settings":
@@ -1998,6 +2091,25 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return
             if route == "/api/stop":
                 self._json(HTTPStatus.OK, self.server.manager.stop())
+                return
+            if route == "/api/file-picker":
+                if not self._client_is_local_machine():
+                    self._error(HTTPStatus.FORBIDDEN, "The native file picker is available only on the Launchpad computer")
+                    return
+                kind = body.get("kind")
+                if kind not in {"model", "projector"}:
+                    raise ValueError("kind must be model or projector")
+                initial_path = body.get("initial_path", "")
+                if not isinstance(initial_path, str) or len(initial_path) > 1000:
+                    raise ValueError("initial_path is invalid")
+                title = "Choose model GGUF" if kind == "model" else "Choose projector GGUF"
+                with self.server.file_picker_lock:
+                    path = choose_gguf_file(
+                        initial_path,
+                        registered_model_directory(self.server.registry),
+                        title,
+                    )
+                self._json(HTTPStatus.OK, {"path": path})
                 return
             if route == "/api/models":
                 item = self.server.registry.add_model(body)

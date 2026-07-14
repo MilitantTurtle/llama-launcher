@@ -20,6 +20,7 @@ const state = {
   servicesEnabled: true,
   vaneEnabled: true,
   resources: {},
+  localFilePicker: false,
 };
 
 const el = (id) => document.getElementById(id);
@@ -29,6 +30,7 @@ let currentRemoveModel = null;
 let currentGroupModel = null;
 let currentPresetMatch = null;
 let currentPresetMatchKey = "";
+let addModelIdentityAutofill = {name: "", family: ""};
 
 const OPTION_FIELDS = [
   { name: "context", label: "Context", integer: true, min: 512, max: 1010000, step: 1 },
@@ -941,6 +943,7 @@ async function saveModelGroup(event) {
 }
 
 function openAddModel() {
+  addModelIdentityAutofill = {name: "", family: ""};
   clearPresetMatch();
   el("add-model-form").reset();
   el("add-model-form").elements.namedItem("family").value = "Custom";
@@ -960,7 +963,133 @@ function openAddModel() {
 function closeAddModel() {
   el("add-model-modal").classList.add("hidden");
   el("add-model-form").reset();
+  addModelIdentityAutofill = {name: "", family: ""};
   clearPresetMatch();
+}
+
+function updateFilePickerAvailability() {
+  const available = state.localFilePicker;
+  for (const id of ["browse-model-gguf", "browse-projector-gguf"]) {
+    const button = el(id);
+    button.disabled = !available;
+    button.title = available
+      ? "Choose a GGUF file on this computer"
+      : "Available only when Launchpad is opened on its host computer";
+  }
+}
+
+async function browseForGguf(kind) {
+  const form = el("add-model-form");
+  const isModel = kind === "model";
+  const input = form.elements.namedItem(isModel ? "model_path" : "mmproj_path");
+  const button = el(isModel ? "browse-model-gguf" : "browse-projector-gguf");
+  const modelPath = form.elements.namedItem("model_path").value.trim();
+  const initialPath = input.value.trim() || (!isModel ? modelPath : "");
+  button.disabled = true;
+  try {
+    const result = await request("/api/file-picker", {
+      method: "POST",
+      body: JSON.stringify({kind, initial_path: initialPath}),
+    });
+    if (!result.path) return;
+    input.value = result.path;
+    input.dispatchEvent(new Event("change", {bubbles: true}));
+    input.focus();
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    button.disabled = !state.localFilePicker;
+  }
+}
+
+function modelNameFromGgufPath(path) {
+  const filename = path.split(/[\\/]/).pop() || "";
+  let stem = filename.replace(/\.gguf$/i, "");
+  stem = stem.replace(/[-_.]\d{5}-of-\d{5}$/i, "");
+  stem = stem.replace(/[-_.](?:UD[-_.])?(?:(?:IQ|Q|TQ)\d+(?:[-_.][A-Z0-9]+)*|(?:BF|F|FP)\d+|MXFP\d+)$/i, "");
+  stem = stem.replace(/[-_.]GGUF$/i, "");
+  let name = stem.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!name) return "";
+
+  name = name
+    .replace(/^qwen\s*/i, "Qwen ")
+    .replace(/^gemma\b/i, "Gemma")
+    .replace(/^deepseek\b/i, "DeepSeek")
+    .replace(/^minicpm\s*(\d+(?:\.\d+)?)/i, "MiniCPM$1")
+    .replace(/^minicpm\b/i, "MiniCPM")
+    .replace(/^minimax\b/i, "MiniMax")
+    .replace(/^mistral\b/i, "Mistral")
+    .replace(/^smollm\s*(\d+(?:\.\d+)?)/i, "SmolLM$1")
+    .replace(/^tinyllama\b/i, "TinyLlama")
+    .replace(/^llama\b/i, "Llama")
+    .replace(/^lfm\s*(\d+(?:\.\d+)?)/i, "LFM$1")
+    .replace(/^glm\s*/i, "GLM ")
+    .replace(/^gpt\s+oss\b/i, "GPT-OSS")
+    .replace(/^phi\b/i, "Phi")
+    .replace(/^pixtral\b/i, "Pixtral")
+    .replace(/^llava\b/i, "LLaVA")
+    .replace(/^nemotron\b/i, "Nemotron")
+    .replace(/^granite\b/i, "Granite")
+    .replace(/^falcon\b/i, "Falcon")
+    .replace(/^command\b/i, "Command")
+    .replace(/\s+/g, " ")
+    .trim();
+  return name;
+}
+
+function modelFamilyFromName(name) {
+  const rules = [
+    [/^Qwen\s+(\d+(?:\.\d+)?)/i, (match) => `Qwen ${match[1]}`],
+    [/^Gemma\s+(\d+(?:\.\d+)?)/i, (match) => `Gemma ${match[1]}`],
+    [/^MiniCPM\s*(\d+(?:\.\d+)?)/i, (match) => `MiniCPM${match[1]}`],
+    [/^LFM\s*(\d+(?:\.\d+)?)/i, (match) => `LFM${match[1]}`],
+    [/^DeepSeek\s+([RV]\d+(?:\.\d+)?)/i, (match) => `DeepSeek ${match[1].toUpperCase()}`],
+    [/^GLM\s+(\d+(?:\.\d+)?)/i, (match) => `GLM ${match[1]}`],
+    [/^Phi\s+(\d+(?:\.\d+)?)/i, (match) => `Phi ${match[1]}`],
+    [/^(?:Meta\s+)?Llama\s+(\d+(?:\.\d+)?)/i, (match) => `Llama ${match[1]}`],
+    [/^Granite\s+(\d+(?:\.\d+)?)/i, (match) => `Granite ${match[1]}`],
+    [/^SmolLM\s*(\d+(?:\.\d+)?)/i, (match) => `SmolLM${match[1]}`],
+    [/^MiniMax\s+(M\d+(?:\.\d+)?)/i, (match) => `MiniMax ${match[1].toUpperCase()}`],
+    [/^Mistral\s+(Small|Nemo|Large|Medium|7B)/i, (match) => `Mistral ${match[1]}`],
+    [/^Command\s+(R(?:7B|\+)?)/i, (match) => `Command ${match[1].toUpperCase()}`],
+    [/^GPT-OSS\b/i, () => "GPT-OSS"],
+    [/^TinyLlama\b/i, () => "TinyLlama"],
+    [/^LLaVA\b/i, () => "LLaVA"],
+  ];
+  for (const [pattern, format] of rules) {
+    const match = name.match(pattern);
+    if (match) return format(match);
+  }
+
+  const words = name.split(/\s+/).filter(Boolean);
+  const sizeIndex = words.findIndex((word) => /^(?:\d+(?:\.\d+)?[BMT]|A\d+B|\d+X\d+B)$/i.test(word));
+  const end = sizeIndex > 0 ? sizeIndex : Math.min(words.length, 2);
+  return words.slice(0, Math.max(1, end)).join(" ");
+}
+
+function autofillModelIdentity(path) {
+  const name = modelNameFromGgufPath(path);
+  if (!name) return;
+  const family = modelFamilyFromName(name);
+  const form = el("add-model-form");
+  const suggestions = {name, family};
+  for (const [fieldName, suggestion] of Object.entries(suggestions)) {
+    if (!suggestion) continue;
+    const field = form.elements.namedItem(fieldName);
+    const current = field.value.trim();
+    const previous = addModelIdentityAutofill[fieldName];
+    const isDefault = fieldName === "family" && current === "Custom";
+    if (!current || isDefault || current === previous) {
+      field.value = suggestion;
+      addModelIdentityAutofill[fieldName] = suggestion;
+    }
+  }
+}
+
+async function handleModelPathChange() {
+  const path = el("add-model-form").elements.namedItem("model_path").value.trim();
+  autofillModelIdentity(path);
+  await refreshPresetMatch();
 }
 
 function presetMatchKey() {
@@ -976,6 +1105,109 @@ function clearPresetMatch() {
   currentPresetMatchKey = "";
   el("preset-match").classList.add("hidden");
   el("preset-match-profiles").replaceChildren();
+  clearPresetFieldGuidance();
+}
+
+const PRESET_GUIDANCE_FIELDS = [
+  "profile_name",
+  "reasoning",
+  "context",
+  "temperature",
+  "top_p",
+  "top_k",
+  "min_p",
+  "presence_penalty",
+  "repeat_penalty",
+  "vision",
+  "no_mmap",
+];
+
+const PRESET_FIELD_STATES = {
+  preset: {
+    label: "From preset",
+    title: "Every imported profile supplies this setting, so the visible value is replaced.",
+  },
+  manual: {
+    label: "Your value",
+    title: "The imported profiles do not replace this setting; the visible value is used.",
+  },
+  fallback: {
+    label: "Fallback",
+    title: "Some imported profiles omit this setting; the visible value fills those gaps.",
+  },
+  ignored: {
+    label: "Ignored",
+    title: "Imported profiles supply their own names, so this visible value is not used.",
+  },
+};
+
+function clearPresetFieldGuidance() {
+  const form = el("add-model-form");
+  for (const fieldName of PRESET_GUIDANCE_FIELDS) {
+    const field = form.elements.namedItem(fieldName);
+    const label = field?.closest("label");
+    if (!label) continue;
+    label.classList.remove(
+      "preset-guided-field",
+      "preset-field-preset",
+      "preset-field-manual",
+      "preset-field-fallback",
+      "preset-field-ignored",
+    );
+    label.querySelector(":scope > .preset-field-badge")?.remove();
+  }
+  el("preset-field-guidance").classList.add("hidden");
+  el("preset-field-guidance").replaceChildren();
+}
+
+function setPresetFieldState(fieldName, state) {
+  const field = el("add-model-form").elements.namedItem(fieldName);
+  const label = field?.closest("label");
+  const stateInfo = PRESET_FIELD_STATES[state];
+  if (!label || !stateInfo) return;
+  label.classList.add("preset-guided-field", `preset-field-${state}`);
+  const badge = document.createElement("span");
+  badge.className = `preset-field-badge ${state}`;
+  badge.textContent = stateInfo.label;
+  badge.title = stateInfo.title;
+  if (field.type === "checkbox") label.append(badge);
+  else label.insertBefore(badge, field);
+}
+
+function presetCoverageState(fieldName, profiles) {
+  const supplied = profiles.filter((profile) => {
+    if (fieldName === "reasoning") return profile.reasoning != null;
+    return Object.prototype.hasOwnProperty.call(profile.sampling || {}, fieldName);
+  }).length;
+  if (supplied === profiles.length) return "preset";
+  if (supplied === 0) return "manual";
+  return "fallback";
+}
+
+function updatePresetFieldGuidance() {
+  clearPresetFieldGuidance();
+  const profiles = currentPresetMatch?.profiles || [];
+  if (!profiles.length) return;
+
+  const importing = el("use-preset-match").checked;
+  const summary = el("preset-field-guidance");
+  const heading = document.createElement("strong");
+  const detail = document.createElement("p");
+  if (!importing) {
+    for (const fieldName of PRESET_GUIDANCE_FIELDS) setPresetFieldState(fieldName, "manual");
+    heading.textContent = "Preset import is off — these are your manual profile values";
+    detail.textContent = "The visible profile name, reasoning, context, sampling, vision, and memory-mapping choices will be used as entered.";
+  } else {
+    setPresetFieldState("profile_name", "ignored");
+    for (const fieldName of ["context", "vision", "no_mmap"]) setPresetFieldState(fieldName, "manual");
+    for (const fieldName of ["reasoning", "temperature", "top_p", "top_k", "min_p", "presence_penalty", "repeat_penalty"]) {
+      setPresetFieldState(fieldName, presetCoverageState(fieldName, profiles));
+    }
+    heading.textContent = "Preset import is on — highlighted controls show what will be saved";
+    detail.textContent = "From preset replaces the visible value. Your value remains manual. Fallback fills only profiles that omit a setting. Ignored is not saved. Model details above, context, vision, and memory mapping always remain yours.";
+  }
+  summary.replaceChildren(heading, detail);
+  summary.classList.remove("hidden");
 }
 
 function presetSettingText(profile) {
@@ -1001,6 +1233,7 @@ function renderPresetMatch(match, key) {
   if (!match) {
     panel.classList.add("hidden");
     el("preset-match-profiles").replaceChildren();
+    clearPresetFieldGuidance();
     return;
   }
   el("preset-match-name").textContent = match.name;
@@ -1013,7 +1246,7 @@ function renderPresetMatch(match, key) {
     ? isReference ? "CREATOR REFERENCE SETTINGS FOUND" : "CREATOR PRESETS FOUND"
     : "KNOWN MODEL FOUND";
   el("preset-match-choice").classList.toggle("hidden", !hasProfiles);
-  el("preset-match-choice-label").textContent = `Add ${match.profiles.length} ${isReference ? "creator-reference" : "creator-recommended"} ${match.profiles.length === 1 ? "profile" : "profiles"}`;
+  el("preset-match-choice-label").textContent = `Import ${match.profiles.length} ${isReference ? "creator-reference" : "creator-recommended"} ${match.profiles.length === 1 ? "profile" : "profiles"}`;
   el("use-preset-match").checked = hasProfiles;
   const profileItems = match.profiles.map((profile) => {
     const item = document.createElement("div");
@@ -1037,6 +1270,7 @@ function renderPresetMatch(match, key) {
   }
   el("preset-match-profiles").replaceChildren(...profileItems);
   panel.classList.remove("hidden");
+  updatePresetFieldGuidance();
 }
 
 async function refreshPresetMatch() {
@@ -1185,6 +1419,8 @@ async function initialize() {
     el("vane-link").href = session.vane_url;
     state.performanceDefaults = session.performance_defaults;
     state.cacheTypes = session.cache_types;
+    state.localFilePicker = Boolean(session.local_file_picker);
+    updateFilePickerAvailability();
     el("model-port-note").textContent = `One model at a time · llama-server :${state.modelPort}`;
     state.catalog = await request("/api/catalog");
     state.status = await request("/api/status");
@@ -1239,7 +1475,10 @@ el("preset-save-modal").addEventListener("click", (event) => {
 });
 el("add-model-button").addEventListener("click", openAddModel);
 el("add-model-form").addEventListener("submit", submitAddModel);
-el("add-model-form").elements.namedItem("model_path").addEventListener("change", refreshPresetMatch);
+el("browse-model-gguf").addEventListener("click", () => browseForGguf("model"));
+el("browse-projector-gguf").addEventListener("click", () => browseForGguf("projector"));
+el("use-preset-match").addEventListener("change", updatePresetFieldGuidance);
+el("add-model-form").elements.namedItem("model_path").addEventListener("change", handleModelPathChange);
 el("add-model-form").elements.namedItem("mmproj_path").addEventListener("change", refreshPresetMatch);
 el("add-model-form").elements.namedItem("name").addEventListener("change", refreshPresetMatch);
 el("add-model-close").addEventListener("click", closeAddModel);

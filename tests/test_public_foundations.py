@@ -96,6 +96,29 @@ class SafetyTests(unittest.TestCase):
         self.assertIsNone(library.match("C:/models/unrelated.gguf", name="Qwen3.5 9B"))
         self.assertEqual(library.match("C:/models/Qwen3.5-9B-Q4_K_M.gguf")["id"], "qwen35-9b")
 
+    def test_native_file_picker_is_restricted_to_local_machine_addresses(self) -> None:
+        self.assertTrue(app.is_local_machine_address("127.0.0.1"))
+        self.assertTrue(app.is_local_machine_address("::1"))
+        self.assertTrue(app.is_local_machine_address("::ffff:127.0.0.1"))
+        self.assertFalse(app.is_local_machine_address("203.0.113.10"))
+
+    def test_registered_model_directory_uses_common_existing_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first = root / "publisher-a" / "model-a.gguf"
+            second = root / "publisher-b" / "model-b.gguf"
+            first.parent.mkdir()
+            second.parent.mkdir()
+            registry = mock.Mock()
+            registry.lock = threading.RLock()
+            registry.data = {
+                "models": [
+                    {"model_path": str(first)},
+                    {"model_path": str(second)},
+                ]
+            }
+            self.assertEqual(app.registered_model_directory(registry), root.resolve())
+
     def test_restart_of_unowned_optional_service_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -234,6 +257,51 @@ class AuthenticationHTTPTests(unittest.TestCase):
             with urlopen(request, timeout=3) as response:
                 self.assertEqual(response.status, 200)
                 self.assertIn(b"Local Model Launchpad", response.read())
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_file_picker_route_requires_token_and_local_client(self) -> None:
+        config = {
+            "_networks": [ipaddress.ip_network("127.0.0.0/8")],
+            "authentication": {"enabled": False},
+        }
+        registry = mock.Mock()
+        registry.lock = threading.RLock()
+        registry.data = {"models": []}
+        server = app.LauncherHTTPServer(("127.0.0.1", 0), app.RequestHandler, config, registry, None, "token")
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        url = f"http://127.0.0.1:{server.server_address[1]}/api/file-picker"
+        body = json.dumps({"kind": "model", "initial_path": ""}).encode("utf-8")
+
+        def picker_request(token: str = "") -> Request:
+            headers = {"Content-Type": "application/json"}
+            if token:
+                headers["X-Launcher-Token"] = token
+            return Request(url, data=body, headers=headers, method="POST")
+
+        try:
+            with self.assertRaises(HTTPError) as missing_token:
+                urlopen(picker_request(), timeout=3)
+            self.assertEqual(missing_token.exception.code, 403)
+
+            with mock.patch.object(app.RequestHandler, "_client_is_local_machine", return_value=False), mock.patch.object(
+                app, "choose_gguf_file"
+            ) as picker:
+                with self.assertRaises(HTTPError) as remote_client:
+                    urlopen(picker_request("token"), timeout=3)
+                self.assertEqual(remote_client.exception.code, 403)
+                picker.assert_not_called()
+
+            with mock.patch.object(app.RequestHandler, "_client_is_local_machine", return_value=True), mock.patch.object(
+                app, "choose_gguf_file", return_value="C:\\Models\\model.gguf"
+            ) as picker:
+                with urlopen(picker_request("token"), timeout=3) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(json.loads(response.read()), {"path": "C:\\Models\\model.gguf"})
+                picker.assert_called_once()
         finally:
             server.shutdown()
             server.server_close()

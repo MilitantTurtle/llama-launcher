@@ -46,6 +46,12 @@ python setup.py --llama-server "C:\llama.cpp\build\bin" --device auto
 
 Or copy `config.example.json` to `config.json` and edit it manually. The path must point to an existing `llama-server.exe`.
 
+## Adding models
+
+Open **Add model** and choose an existing GGUF. When Launchpad is opened on its host Windows computer, the Browse buttons open a native file picker; remote LAN clients can still paste paths but cannot open a dialog on the host.
+
+Choosing a model GGUF fills a readable model name and inferred family from the filename while preserving later manual edits. If the filename matches the bundled preset library, the form labels each profile value as **From preset**, **Your value**, **Fallback**, or **Ignored** so it is clear what importing creator profiles will replace. Turning preset import off marks the full profile as manual.
+
 ## LAN access and security
 
 By default, both Launchpad and llama-server bind to `0.0.0.0`. Windows Firewall still controls whether another device can connect. Launchpad accepts loopback and RFC 1918 private addresses by default; edit `allowed_networks` to make that narrower.

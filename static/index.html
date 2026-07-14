@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="dark">
   <title>Local Model Launchpad</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=20260714">
 </head>
 <body>
   <div class="ambient ambient-one"></div>
@@ -227,8 +227,18 @@
         <div class="settings-grid">
           <label>Model name<input name="name" required maxlength="100" placeholder="My local model"></label>
           <label>Family<input name="family" required maxlength="60" value="Custom" placeholder="Custom"></label>
-          <label class="wide-field">Model GGUF path<input name="model_path" required placeholder="C:\Models\...\model.gguf"></label>
-          <label class="wide-field">Projector GGUF path (optional)<input name="mmproj_path" placeholder="C:\Models\...\mmproj.gguf"></label>
+          <label class="wide-field">Model GGUF path
+            <span class="file-picker-row">
+              <input name="model_path" required placeholder="Choose a .gguf file or paste its path">
+              <button class="button secondary file-picker-button" id="browse-model-gguf" type="button" disabled>Browseâ€¦</button>
+            </span>
+          </label>
+          <label class="wide-field">Projector GGUF path (optional)
+            <span class="file-picker-row">
+              <input name="mmproj_path" placeholder="Choose an optional projector .gguf">
+              <button class="button secondary file-picker-button" id="browse-projector-gguf" type="button" disabled>Browseâ€¦</button>
+            </span>
+          </label>
           <label>API alias<input name="alias" maxlength="100" placeholder="Generated from name"></label>
           <label>Quant label<input name="quant" maxlength="60" value="Custom"></label>
           <label>Profile name<input name="profile_name" maxlength="60" value="Default"></label>
@@ -247,6 +257,7 @@
           <label>Presence penalty<input name="presence_penalty" type="number" min="-2" max="2" step="0.05" value="0" required></label>
           <label>Repeat penalty<input name="repeat_penalty" type="number" min="0" max="5" step="0.05" value="1" required></label>
         </div>
+        <div class="preset-field-guidance hidden" id="preset-field-guidance" aria-live="polite"></div>
         <section class="preset-match hidden" id="preset-match" aria-live="polite">
           <div class="preset-match-header">
             <div>
@@ -259,8 +270,8 @@
           <label class="preset-match-choice" id="preset-match-choice">
             <input id="use-preset-match" type="checkbox" checked>
             <span>
-              <strong id="preset-match-choice-label">Add creator-recommended profiles</strong>
-              <small>Only documented values are replaced. Unspecified sampling fields keep the values above.</small>
+              <strong id="preset-match-choice-label">Import creator-recommended profiles</strong>
+              <small>Fields marked From preset replace the visible value. Fallback fields use it only when a profile omits that setting.</small>
             </span>
           </label>
           <p>Context is independent of model-card presets and remains at the selected value above.</p>
@@ -269,7 +280,7 @@
           <label><input name="vision" type="checkbox"> Enable projector for this profile</label>
           <label><input name="no_mmap" type="checkbox"> Disable memory mapping</label>
         </div>
-        <p class="form-note">Paths must be absolute, existing GGUF files. Additional profiles can be added later in models.json.</p>
+        <p class="form-note">Browse is available on the Launchpad computer. Paths must be absolute, existing GGUF files. Additional profiles can be added later in models.json.</p>
         <div class="modal-actions">
           <button class="button secondary" id="add-model-cancel" type="button">Cancel</button>
           <button class="button" id="add-model-submit" type="submit">Add model</button>
@@ -278,6 +289,6 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=20260714" defer></script>
 </body>
 </html>
