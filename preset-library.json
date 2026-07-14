@@ -339,13 +339,21 @@
       "source": {
         "publisher": "Google",
         "url": "https://huggingface.co/google/gemma-4-E4B-it",
-        "checked_at": "2026-07-12"
+        "checked_at": "2026-07-14"
       },
       "profiles": [
         {
-          "name": "Recommended",
-          "mode": "Standard",
-          "reasoning": "auto",
+          "name": "Thinking",
+          "mode": "Reasoning / Quality",
+          "reasoning": "on",
+          "generation": {"reasoning_budget": -1, "reasoning_preserve": "off"},
+          "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 64}
+        },
+        {
+          "name": "Non-Thinking",
+          "mode": "Fast / Direct",
+          "reasoning": "off",
+          "generation": {"reasoning_budget": 0, "reasoning_preserve": "off"},
           "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 64}
         }
       ]
