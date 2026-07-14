@@ -431,6 +431,8 @@ pre { min-height: 170px; max-height: 400px; margin: 0; padding: 18px; overflow: 
 .settings-page-card { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(145deg, rgba(22,26,36,.94), rgba(14,17,24,.9)); box-shadow: 0 16px 38px rgba(0,0,0,.16); }
 .settings-card-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; color: #d8d0ff; background: linear-gradient(145deg, rgba(126,94,232,.38), rgba(72,54,145,.38)); font-size: 1rem; font-weight: 900; }
 .settings-card-icon.llama-icon { color: #a7f3d0; background: linear-gradient(145deg, rgba(16,185,129,.25), rgba(6,95,70,.3)); }
+.settings-page-card.mayhem-card { border-color: rgba(251,113,133,.24); background: linear-gradient(145deg, rgba(48,19,28,.72), rgba(14,17,24,.92)); }
+.settings-card-icon.mayhem-icon { color: #fecdd3; background: linear-gradient(145deg, rgba(244,63,94,.34), rgba(136,19,55,.38)); }
 .settings-card-copy { min-width: 0; }
 .settings-card-copy h2 { margin: 5px 0 6px; font-size: 1.15rem; }
 .settings-card-copy > p { margin: 0 0 18px; color: var(--muted); font-size: .8rem; }
@@ -444,6 +446,11 @@ pre { min-height: 170px; max-height: 400px; margin: 0; padding: 18px; overflow: 
 .settings-service-toggle span { display: grid; gap: 3px; }
 .settings-service-toggle strong { color: var(--text); font-size: .76rem; }
 .settings-service-toggle small { color: var(--muted); font-size: .68rem; font-weight: 500; }
+.settings-service-toggle.mayhem-toggle { border-color: rgba(251,113,133,.22); background: rgba(251,113,133,.045); }
+.settings-service-toggle.mayhem-toggle input { accent-color: #fb7185; }
+.mayhem-warning { padding: 14px; border: 1px solid rgba(251,113,133,.2); border-radius: 11px; background: rgba(251,113,133,.055); }
+.mayhem-warning strong { color: #fecdd3; font-size: .75rem; }
+.mayhem-warning p { margin: 6px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.55; }
 .settings-subsection { display: grid; gap: 9px; margin-top: 18px; padding-top: 17px; border-top: 1px solid var(--line); }
 .inline-link { display: inline-block; margin-top: 10px; color: #a99af1; font-size: .72rem; font-weight: 750; text-decoration: none; }
 .inline-link:hover { color: #c4b5fd; }
