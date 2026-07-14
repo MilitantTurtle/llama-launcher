@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-07-13",
+  "updated_at": "2026-07-14",
   "policy": {
     "provenance": "creator-model-card-or-creator-reference-inference-only",
     "context_is_separate": true,
@@ -993,6 +993,25 @@
           "reasoning": "on",
           "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "repeat_penalty": 1.05},
           "generation": {"n_predict": 16384}
+        }
+      ]
+    },
+    {
+      "id": "agentcpm-explore",
+      "name": "AgentCPM Explore 4B",
+      "patterns": ["agentcpm[._-]?explore"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "Qwen base-model reference for OpenBMB AgentCPM Explore",
+        "url": "https://huggingface.co/Qwen/Qwen3-4B-Thinking-2507/blob/main/generation_config.json",
+        "checked_at": "2026-07-14"
+      },
+      "profiles": [
+        {
+          "name": "Qwen Base Reference",
+          "mode": "Thinking / Deep Research Agent",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0}
         }
       ]
     },

@@ -120,11 +120,37 @@ class SafetyTests(unittest.TestCase):
         self.assertIsNone(library.match("C:/models/unrelated.gguf", name="Qwen3.5 9B"))
         self.assertEqual(library.match("C:/models/Qwen3.5-9B-Q4_K_M.gguf")["id"], "qwen35-9b")
 
+    def test_agentcpm_explore_uses_an_explicit_base_model_reference(self) -> None:
+        library = app.ModelCardPresetLibrary(app.PRESET_LIBRARY_PATH)
+        match = library.match("C:/models/AgentCPM-Explore.Q4_K_M.gguf")
+        self.assertEqual(match["id"], "agentcpm-explore")
+        self.assertEqual(match["preset_status"], "reference")
+
     def test_native_file_picker_is_restricted_to_local_machine_addresses(self) -> None:
         self.assertTrue(app.is_local_machine_address("127.0.0.1"))
         self.assertTrue(app.is_local_machine_address("::1"))
         self.assertTrue(app.is_local_machine_address("::ffff:127.0.0.1"))
         self.assertFalse(app.is_local_machine_address("203.0.113.10"))
+
+    def test_native_file_picker_uses_the_accepted_connection_endpoints(self) -> None:
+        with mock.patch.object(app.socket, "getaddrinfo", side_effect=OSError("unavailable")):
+            self.assertTrue(
+                app.is_local_machine_address("192.168.1.160", "192.168.1.160")
+            )
+            self.assertTrue(
+                app.is_local_machine_address("::ffff:192.168.1.160", "192.168.1.160")
+            )
+            self.assertFalse(
+                app.is_local_machine_address("192.168.1.181", "192.168.1.160")
+            )
+
+    def test_request_handler_passes_its_local_connection_endpoint(self) -> None:
+        handler = object.__new__(app.RequestHandler)
+        handler.client_address = ("192.168.1.160", 50000)
+        handler.connection = mock.Mock()
+        handler.connection.getsockname.return_value = ("192.168.1.160", 8766)
+        with mock.patch.object(app.socket, "getaddrinfo", side_effect=OSError("unavailable")):
+            self.assertTrue(handler._client_is_local_machine())
 
     def test_registered_model_directory_uses_common_existing_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
