@@ -126,6 +126,29 @@ class SafetyTests(unittest.TestCase):
         self.assertEqual(match["id"], "agentcpm-explore")
         self.assertEqual(match["preset_status"], "reference")
 
+    def test_gemma4_e4b_offers_explicit_thinking_modes(self) -> None:
+        library = app.ModelCardPresetLibrary(app.PRESET_LIBRARY_PATH)
+        match = library.match("C:/models/gemma-4-E4B_q4_0-it.gguf")
+        self.assertEqual(match["id"], "gemma4-e4b")
+        self.assertNotEqual(match.get("preset_status"), "reference")
+        profiles = {profile["name"]: profile for profile in match["profiles"]}
+        self.assertEqual(set(profiles), {"Thinking", "Non-Thinking"})
+        self.assertEqual(profiles["Thinking"]["reasoning"], "on")
+        self.assertEqual(
+            profiles["Thinking"]["generation"],
+            {"reasoning_budget": -1, "reasoning_preserve": "off"},
+        )
+        self.assertEqual(profiles["Non-Thinking"]["reasoning"], "off")
+        self.assertEqual(
+            profiles["Non-Thinking"]["generation"],
+            {"reasoning_budget": 0, "reasoning_preserve": "off"},
+        )
+        for profile in profiles.values():
+            self.assertEqual(
+                profile["sampling"],
+                {"temperature": 1.0, "top_p": 0.95, "top_k": 64},
+            )
+
     def test_native_file_picker_is_restricted_to_local_machine_addresses(self) -> None:
         self.assertTrue(app.is_local_machine_address("127.0.0.1"))
         self.assertTrue(app.is_local_machine_address("::1"))
