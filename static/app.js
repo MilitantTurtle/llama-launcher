@@ -24,6 +24,7 @@ const state = {
 };
 
 const el = (id) => document.getElementById(id);
+const SERVER_STATUS_ICON = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4" width="17" height="6" rx="2" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="14" width="17" height="6" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="17" r="1" fill="currentColor"/><path d="M11 7h6M11 17h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 let toastTimer;
 let currentPresetDraft = null;
 let currentRemoveModel = null;
@@ -151,6 +152,13 @@ async function controlExternalService(button) {
 
 function familyFor(item) {
   return item.family || "Other";
+}
+
+function modelMarkForFamily(family) {
+  const value = String(family || "").trim();
+  if (/qwen|agentcpm/i.test(value)) return "Q";
+  const match = value.match(/[a-z0-9]/i);
+  return match ? match[0].toUpperCase() : "M";
 }
 
 function modeIcon(mode) {
@@ -364,7 +372,7 @@ function modelCard(model) {
   summary.setAttribute("aria-expanded", String(expanded));
   summary.innerHTML = `
     <span class="model-identity">
-      <span class="model-mark">${model.family.startsWith("Gemma") ? "G" : "Q"}</span>
+      <span class="model-mark">${escapeHtml(modelMarkForFamily(model.family))}</span>
       <span class="model-copy">
         <strong>${escapeHtml(model.name)}</strong>
         <small>${escapeHtml(model.quant)} · ${model.profiles.length} ${model.profiles.length === 1 ? "profile" : "profiles"}</small>
@@ -778,7 +786,9 @@ function renderStatus(renderCards = true) {
     el("now-title").textContent = state.status.name;
     const customLabel = Object.keys(state.status.custom_options || {}).length ? " · custom settings" : "";
     el("now-detail").textContent = `${state.status.mode}${customLabel} · PID ${state.status.pid} · ${minutes}:${String(seconds).padStart(2, "0")} elapsed`;
-    el("now-icon").textContent = state.status.vision ? "◈" : "Q";
+    const activeProfile = state.catalog.find((profile) => profile.model_id === state.status.model_id);
+    if (activeProfile) el("now-icon").textContent = modelMarkForFamily(familyFor(activeProfile));
+    else el("now-icon").innerHTML = SERVER_STATUS_ICON;
     const apiHost = location.hostname || "127.0.0.1";
     if (apiPort) el("api-link").href = `http://${apiHost}:${apiPort}/`;
   } else {
@@ -787,7 +797,7 @@ function renderStatus(renderCards = true) {
     el("now-detail").textContent = last
       ? `Last: ${last.name} · ${last.status}${Number.isInteger(last.return_code) ? ` (${last.return_code})` : ""}`
       : `Select a launcher below to start llama-server on port ${state.modelPort}.`;
-    el("now-icon").textContent = "Q";
+    el("now-icon").innerHTML = SERVER_STATUS_ICON;
   }
   if (renderCards) renderCatalog();
 }
