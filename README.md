@@ -105,3 +105,128 @@ python app.py --check
 `app.py --check` requires a valid local `config.json` and an existing `llama-server.exe`.
 
 The same compile and test checks run on `windows-latest` for every GitHub push and pull request.
+
+## Wiring OpenWebUI and LibreChat service control
+
+Launchpad can show any reachable OpenWebUI or LibreChat instance as connected, but Start, Stop, and Restart require a small PowerShell launcher inside each installation folder. Managed service control is intended for native Windows processes that stay attached to that script. Docker installations should normally be managed with Docker and used as status/Open links only; see [Docker installations](#docker-installations).
+
+### Expected layout
+
+By default, Launchpad looks for sibling folders:
+
+```text
+C:\Apps\
+├── llama-launcher\
+├── OpenWebUI\
+│   └── Start-OpenWebUI.ps1
+└── LibreChat\
+    └── Start-LibreChat.ps1
+```
+
+The folders do not have to be siblings. Open **Launcher Settings**, enable **Show services button**, and set the absolute installation folders and addresses. The address fields accept an IP address and port, such as `127.0.0.1:8181` or `192.168.1.50:3080`; they do not accept a hostname, credentials, or an additional URL path.
+
+The configured address controls three things: the health check, the Open link, and the TCP port whose listening process Launchpad records. It must therefore match the port opened by the service. Configure OpenWebUI to use port `8181` and LibreChat to use port `3080`, or change the corresponding address in Settings.
+
+Environment variables can set the initial folder defaults before `settings.json` exists:
+
+```powershell
+$env:OPENWEBUI_ROOT = 'D:\Apps\OpenWebUI'
+$env:LIBRECHAT_ROOT = 'D:\Apps\LibreChat'
+.\start-launchpad.ps1
+```
+
+Saving Launcher Settings writes the selected folders to `settings.json`, after which those saved values take precedence.
+
+### `Start-OpenWebUI.ps1` template
+
+This template expects OpenWebUI to be installed in a `.venv` inside its installation folder. Adjust `$OpenWebUI` if your executable is elsewhere.
+
+```powershell
+$ErrorActionPreference = 'Stop'
+
+$Root = $PSScriptRoot
+$OpenWebUI = Join-Path $Root '.venv\Scripts\open-webui.exe'
+
+if (-not (Test-Path -LiteralPath $OpenWebUI -PathType Leaf)) {
+    throw "OpenWebUI executable not found: $OpenWebUI"
+}
+
+Set-Location -LiteralPath $Root
+$env:DATA_DIR = Join-Path $Root 'data'
+
+& $OpenWebUI serve --host 0.0.0.0 --port 8181
+exit $LASTEXITCODE
+```
+
+Save it as `Start-OpenWebUI.ps1` in the folder selected as **OpenWebUI installation folder**. Keep the final command in the foreground: do not use `Start-Process` without `-Wait`.
+
+### `Start-LibreChat.ps1` template
+
+This template expects a native LibreChat checkout with `package.json`, dependencies already installed, and `npm.cmd` available on `PATH`. LibreChat's `.env` must point to a working MongoDB instance and configure the server to use the port entered in Launcher Settings on an interface reachable through the configured IP address.
+
+```powershell
+$ErrorActionPreference = 'Stop'
+
+$Root = $PSScriptRoot
+$Package = Join-Path $Root 'package.json'
+
+if (-not (Test-Path -LiteralPath $Package -PathType Leaf)) {
+    throw "LibreChat package.json not found: $Package"
+}
+
+$Npm = (Get-Command npm.cmd -ErrorAction Stop).Source
+Set-Location -LiteralPath $Root
+
+& $Npm run backend
+exit $LASTEXITCODE
+```
+
+Save it as `Start-LibreChat.ps1` in the folder selected as **LibreChat installation folder**. If Node.js is portable rather than on `PATH`, replace the `Get-Command` line with an absolute or root-relative path to that runtime's `npm.cmd`.
+
+This script does not start MongoDB. Run MongoDB as a separate Windows service or extend the script to verify/start your own dependency before `npm run backend`. Launchpad intentionally stops only LibreChat's application process tree; it does not stop a separately managed MongoDB service.
+
+### First managed start
+
+1. Test each service directly once and confirm its URL works, then stop it normally.
+2. Open Launcher Settings, enable **Show services button**, enter both installation folders and addresses, and save.
+3. On the main page, press **Start** for the service.
+4. Wait for **Connected · managed**. Launchpad records the exact launcher and listening-process identity in `managed-services.json`.
+5. Stop and Restart are now available and remain available after Launchpad itself restarts, provided the recorded Windows process identity still matches.
+
+If a service is already running when Launchpad first sees it, it appears as **Connected · external**. Strict mode will not stop a process it did not start. Stop that service manually once, refresh Launchpad, and press Start to hand future control to Launchpad.
+
+Llama Mayhem can force-stop an external listener, but it removes this ownership protection. Do not enable it merely to avoid the one-time handoff.
+
+### OpenTerminal
+
+OpenTerminal is optional and remains inside the OpenWebUI dropdown. To manage it, place it at `OpenWebUI\OpenTerminal`, with `Start-OpenTerminal.ps1` and `config.toml` in that folder. Launchpad reads its listening port from `config.toml` (default `8765`) and checks `/health` on the OpenTerminal address configured in Settings. If OpenTerminal is not installed, its row remains disconnected and its Start action reports that the launcher script is missing.
+
+### Logs and troubleshooting
+
+Launchpad creates the log folders when needed and redirects launcher output to:
+
+```text
+OpenWebUI\logs\open-webui.out.log
+OpenWebUI\logs\open-webui.err.log
+LibreChat\logs\librechat-launchpad.out.log
+LibreChat\logs\librechat-launchpad.err.log
+```
+
+Common states and errors:
+
+- **Disconnected / Ready to start:** the health URL is unavailable and no process owns the configured port.
+- **Connected · external:** the URL is live, but this Launchpad installation did not start the listener.
+- **Service launcher not found:** the expected `.ps1` file is missing from the configured installation folder.
+- **Launcher exited before opening port:** the script failed, a dependency is unavailable, or the command/port does not match Settings. Read the service's `.err.log`.
+- **Recorded process identity no longer matches:** the service was replaced or restarted outside Launchpad. Stop it manually and use Start again.
+
+Stop a managed service before changing its installation folder or port. Do not copy or hand-edit `managed-services.json`; stale records are discarded automatically when their process identity no longer matches.
+
+### Docker installations
+
+The current process-ownership model does not run `docker compose down` during Stop. Killing a foreground `docker compose up` client may leave its containers running, and force-stopping a Docker-owned port with Llama Mayhem can affect Docker itself. For Docker-based OpenWebUI or LibreChat:
+
+- leave the corresponding `Start-*.ps1` absent;
+- configure the service URL to get Connected status and the Open link;
+- manage Start, Stop, and Restart with Docker Compose or your container manager;
+- do not use Llama Mayhem against Docker-published service ports.
