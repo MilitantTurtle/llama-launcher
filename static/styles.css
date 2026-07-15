@@ -77,7 +77,7 @@ h1 span { color: var(--violet); }
 .hero-button-row .service-card { width: 100%; min-width: 0; }
 .hero-button-row .settings-cog { width: 100%; height: auto; min-height: 100%; }
 .hero { transition: margin-bottom .18s ease; }
-.hero.services-open { margin-bottom: 265px; }
+.hero.services-open { margin-bottom: 345px; }
 
 .connection-card {
   display: flex;
@@ -474,7 +474,7 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px
 @media (max-width: 760px) {
   .shell { width: min(100% - 24px, 1240px); padding-top: 30px; }
   .hero { align-items: flex-start; flex-direction: column; }
-  .hero.services-open { margin-bottom: 390px; }
+  .hero.services-open { margin-bottom: 535px; }
   .settings-hero { align-items: flex-start; flex-direction: column; }
   .hero-actions { width: 100%; justify-content: flex-start; }
   .connection-card { min-width: 0; flex: 1 1 165px; }

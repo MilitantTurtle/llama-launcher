@@ -37,6 +37,8 @@ async function initializeSettings() {
     el("settings-openwebui-root").value = settings.openwebui_root;
     el("settings-openwebui").value = settings.openwebui_url;
     el("settings-openterminal").value = settings.openterminal_url;
+    el("settings-librechat-root").value = settings.librechat_root;
+    el("settings-librechat").value = settings.librechat_url;
     el("settings-vane-enabled").checked = settings.vane_enabled;
     el("settings-vane").value = settings.vane_url;
     el("settings-llama-server").value = settings.llama_server_executable;
@@ -44,6 +46,7 @@ async function initializeSettings() {
     initialLlamaMayhem = settings.llama_mayhem;
     el("settings-file").textContent = settings.settings_file;
     updatePreview("settings-openwebui-preview", settings.openwebui_url);
+    updatePreview("settings-librechat-preview", settings.librechat_url);
     updatePreview("settings-vane-preview", settings.vane_url);
     el("settings-connection-dot").classList.add("online");
     el("settings-connection-label").textContent = "Online";
@@ -54,6 +57,7 @@ async function initializeSettings() {
 }
 
 el("settings-openwebui").addEventListener("input", (event) => updatePreview("settings-openwebui-preview", event.target.value));
+el("settings-librechat").addEventListener("input", (event) => updatePreview("settings-librechat-preview", event.target.value));
 el("settings-vane").addEventListener("input", (event) => updatePreview("settings-vane-preview", event.target.value));
 el("settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -74,6 +78,8 @@ el("settings-form").addEventListener("submit", async (event) => {
         openwebui_root: el("settings-openwebui-root").value.trim(),
         openwebui_url: el("settings-openwebui").value.trim(),
         openterminal_url: el("settings-openterminal").value.trim(),
+        librechat_root: el("settings-librechat-root").value.trim(),
+        librechat_url: el("settings-librechat").value.trim(),
         vane_enabled: el("settings-vane-enabled").checked,
         vane_url: el("settings-vane").value.trim(),
         llama_server_executable: el("settings-llama-server").value.trim(),
@@ -84,6 +90,8 @@ el("settings-form").addEventListener("submit", async (event) => {
     el("settings-openwebui-root").value = settings.openwebui_root;
     el("settings-openwebui").value = settings.openwebui_url;
     el("settings-openterminal").value = settings.openterminal_url;
+    el("settings-librechat-root").value = settings.librechat_root;
+    el("settings-librechat").value = settings.librechat_url;
     el("settings-vane-enabled").checked = settings.vane_enabled;
     el("settings-vane").value = settings.vane_url;
     el("settings-llama-server").value = settings.llama_server_executable;
@@ -91,6 +99,7 @@ el("settings-form").addEventListener("submit", async (event) => {
     initialLlamaMayhem = settings.llama_mayhem;
     el("settings-file").textContent = settings.settings_file;
     updatePreview("settings-openwebui-preview", settings.openwebui_url);
+    updatePreview("settings-librechat-preview", settings.librechat_url);
     updatePreview("settings-vane-preview", settings.vane_url);
     toast("Settings saved");
   } catch (error) {

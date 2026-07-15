@@ -65,6 +65,7 @@ async function request(path, options = {}) {
 function renderServices() {
   const openwebui = state.services.openwebui;
   const openterminal = state.services.openterminal;
+  const librechat = state.services.librechat;
   const setServiceState = (dotId, labelId, service) => {
     const live = Boolean(service?.live);
     el(dotId).classList.toggle("online", live);
@@ -79,9 +80,11 @@ function renderServices() {
   setServiceState("openwebui-dot", "openwebui-state", openwebui);
   setServiceState("openwebui-detail-dot", "openwebui-detail-state", openwebui);
   setServiceState("openterminal-dot", "openterminal-state", openterminal);
+  setServiceState("librechat-dot", "librechat-state", librechat);
   setServiceState("vane-dot", "vane-state", state.services.vane);
   if (openwebui?.open_url) el("openwebui-link").href = openwebui.open_url;
   if (openwebui?.open_url) el("openwebui-direct-link").href = openwebui.open_url;
+  if (librechat?.open_url) el("librechat-link").href = librechat.open_url;
   if (state.services.vane?.open_url) el("vane-link").href = state.services.vane.open_url;
   document.querySelectorAll(".service-action").forEach((button) => {
     const service = state.services[button.dataset.service];
@@ -134,7 +137,11 @@ async function controlExternalService(button) {
   const serviceId = button.dataset.service;
   const action = button.dataset.action;
   document.querySelectorAll(".service-action").forEach((item) => { item.disabled = true; });
-  const labelId = serviceId === "openwebui" ? "openwebui-detail-state" : "openterminal-state";
+  const labelId = {
+    openwebui: "openwebui-detail-state",
+    openterminal: "openterminal-state",
+    librechat: "librechat-state",
+  }[serviceId];
   const progress = { start: "Starting…", stop: "Stopping…", restart: "Restarting…" };
   el(labelId).textContent = progress[action] || "Working…";
   try {
@@ -1424,6 +1431,7 @@ async function initialize() {
     el("service-launcher").classList.toggle("hidden", !state.servicesEnabled);
     el("openwebui-link").href = session.openwebui_url;
     el("openwebui-direct-link").href = session.openwebui_url;
+    el("librechat-link").href = session.librechat_url;
     state.vaneEnabled = session.vane_enabled;
     el("vane-link").classList.toggle("hidden", !state.vaneEnabled);
     el("vane-link").href = session.vane_url;

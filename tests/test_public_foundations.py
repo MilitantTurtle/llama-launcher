@@ -80,6 +80,8 @@ class SafetyTests(unittest.TestCase):
             "openwebui_root": str(root),
             "openwebui_url": "http://127.0.0.1:8181",
             "openterminal_url": "http://127.0.0.1:8765",
+            "librechat_root": str(root),
+            "librechat_url": "http://127.0.0.1:3080",
             "vane_url": "http://127.0.0.1:32761",
         }
 
@@ -114,6 +116,19 @@ class SafetyTests(unittest.TestCase):
             with mock.patch.object(app, "SETTINGS_PATH", settings_path):
                 settings = app.load_user_settings(str(executable))
             self.assertFalse(settings["llama_mayhem"])
+            self.assertEqual(settings["librechat_url"], "http://127.0.0.1:3080")
+            self.assertEqual(Path(settings["librechat_root"]), app.DEFAULT_LIBRECHAT_ROOT)
+
+    def test_librechat_service_uses_configured_script_port_and_logs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            definitions = app.service_definitions(self.service_config(root))
+            librechat = definitions["librechat"]
+            self.assertEqual(librechat["script"], root / "Start-LibreChat.ps1")
+            self.assertEqual(librechat["working_directory"], root)
+            self.assertEqual(librechat["port"], 3080)
+            self.assertEqual(librechat["health_url"], "http://127.0.0.1:3080")
+            self.assertEqual(librechat["stdout"], root / "logs" / "librechat-launchpad.out.log")
 
     def test_display_name_cannot_spoof_a_preset_match(self) -> None:
         library = app.ModelCardPresetLibrary(app.PRESET_LIBRARY_PATH)

@@ -71,21 +71,21 @@ Place the printed value in `authentication.password_hash`, set a username, and s
 - `config.json`: bind addresses, allowed networks, authentication, llama-server executable and launch defaults.
 - `models.json`: generated local models and launch profiles. It starts empty and is ignored by Git so model paths remain local.
 - `preset-library.json`: source-linked recommended profiles matched from model filenames.
-- `settings.json`: optional OpenWebUI, OpenTerminal, Vane, and Llama Mayhem preferences. Integrations and unsafe process control default off; the file is created only when settings are saved.
+- `settings.json`: optional OpenWebUI, OpenTerminal, LibreChat, Vane, and Llama Mayhem preferences. Integrations and unsafe process control default off; the file is created only when settings are saved.
 
-Set `OPENWEBUI_ROOT` if you want the optional local service controls to use an OpenWebUI installation outside the default sibling folder. Set `LAUNCHPAD_PYTHON` if `python.exe` is not on `PATH`.
+Set `OPENWEBUI_ROOT` or `LIBRECHAT_ROOT` if you want the optional local service controls to use installations outside their default sibling folders. Set `LAUNCHPAD_PYTHON` if `python.exe` is not on `PATH`.
 
 `server.device` accepts `auto`, `none` for CPU-only, or a device identifier reported by `llama-server.exe --list-devices`, such as `CUDA0` or `Vulkan0`. Automatic mode omits the `--device` argument and lets llama.cpp select from the backends compiled into that binary.
 
 ## Optional service controls
 
-The settings page accepts the OpenWebUI installation folder containing `Start-OpenWebUI.ps1`. OpenTerminal is expected in its `OpenTerminal` subfolder. Once Launchpad starts either service, its Start, Stop, and Restart controls remain available across Launchpad restarts.
+The settings page accepts the OpenWebUI installation folder containing `Start-OpenWebUI.ps1` and the LibreChat folder containing `Start-LibreChat.ps1`. OpenTerminal is expected in OpenWebUI's `OpenTerminal` subfolder. Once Launchpad starts one of these services, its Start, Stop, and Restart controls remain available across Launchpad restarts. Stopping LibreChat leaves its MongoDB Windows service running; LibreChat's startup script remains responsible for ensuring that dependency is available.
 
 Launchpad records the exact launcher and listening-process IDs, executable paths, ports, and Windows process-creation identities in the ignored local file `managed-services.json`. It only stops a service while all of that identity still matches. A service that was already running externally remains visible as connected but unmanaged; stop it manually once, then use Launchpad's Start button to place it under managed control. Vane remains a status link because it may be remote.
 
 ## Llama Mayhem
 
-**Llama Mayhem** is an opt-in unsafe process-control mode in Settings. It matches the more aggressive behavior some private installations use: Launchpad discovers and adopts external `llama-server.exe` processes, allows adopted processes to be stopped without ownership or creation-identity checks, and allows OpenWebUI or OpenTerminal controls to force-stop any process listening on their configured ports.
+**Llama Mayhem** is an opt-in unsafe process-control mode in Settings. It matches the more aggressive behavior some private installations use: Launchpad discovers and adopts external `llama-server.exe` processes, allows adopted processes to be stopped without ownership or creation-identity checks, and allows OpenWebUI, OpenTerminal, or LibreChat controls to force-stop any process listening on their configured ports.
 
 The option is off by default and strict ownership remains the normal public behavior. Enable it only when the configured ports and every detected `llama-server.exe` are under your control. Turning it off detaches an adopted unowned model process without terminating it. Launching a model still refuses an occupied model-server port rather than automatically killing the listener.
 

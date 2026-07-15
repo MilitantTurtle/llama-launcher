@@ -43,6 +43,7 @@ PID_PATH = Path(os.environ.get("QWEN_LAUNCHER_PID_PATH", str(APP_DIR / "web-laun
 ACTIVE_MODEL_PATH = Path(os.environ.get("QWEN_LAUNCHER_ACTIVE_MODEL_PATH", str(APP_DIR / "active-model.json"))).resolve()
 MANAGED_SERVICES_PATH = Path(os.environ.get("QWEN_LAUNCHER_MANAGED_SERVICES_PATH", str(APP_DIR / "managed-services.json"))).resolve()
 DEFAULT_OPENWEBUI_ROOT = Path(os.environ.get("OPENWEBUI_ROOT", str(APP_DIR.parent / "OpenWebUI"))).resolve()
+DEFAULT_LIBRECHAT_ROOT = Path(os.environ.get("LIBRECHAT_ROOT", str(APP_DIR.parent / "LibreChat"))).resolve()
 POWERSHELL_EXE = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
 
 SAMPLING_KEYS = (
@@ -209,12 +210,12 @@ def validate_server_executable(raw_value) -> str:
     return str(path)
 
 
-def normalize_service_root(raw_value) -> str:
+def normalize_service_root(raw_value, label: str) -> str:
     if not isinstance(raw_value, str) or not raw_value.strip():
-        raise ValueError("OpenWebUI folder is required")
+        raise ValueError(f"{label} folder is required")
     path = Path(raw_value.strip().strip('"')).expanduser()
     if not path.is_absolute():
-        raise ValueError("OpenWebUI folder must be an absolute path")
+        raise ValueError(f"{label} folder must be an absolute path")
     return str(path.resolve())
 
 
@@ -230,6 +231,8 @@ def load_user_settings(default_executable: str) -> dict:
             "openwebui_root": str(DEFAULT_OPENWEBUI_ROOT),
             "openwebui_url": "http://127.0.0.1:8181",
             "openterminal_url": "http://127.0.0.1:8765",
+            "librechat_root": str(DEFAULT_LIBRECHAT_ROOT),
+            "librechat_url": "http://127.0.0.1:3080",
             "vane_enabled": False,
             "vane_url": "http://127.0.0.1:32761",
             "llama_server_executable": default_executable,
@@ -246,9 +249,11 @@ def load_user_settings(default_executable: str) -> dict:
         raise ValueError("llama_mayhem must be true or false")
     return {
         "openwebui_enabled": openwebui_enabled,
-        "openwebui_root": normalize_service_root(data.get("openwebui_root", str(DEFAULT_OPENWEBUI_ROOT))),
+        "openwebui_root": normalize_service_root(data.get("openwebui_root", str(DEFAULT_OPENWEBUI_ROOT)), "OpenWebUI"),
         "openwebui_url": normalize_service_url(data.get("openwebui_url", "http://127.0.0.1:8181"), "OpenWebUI"),
         "openterminal_url": normalize_service_url(data.get("openterminal_url", "http://127.0.0.1:8765"), "OpenTerminal"),
+        "librechat_root": normalize_service_root(data.get("librechat_root", str(DEFAULT_LIBRECHAT_ROOT)), "LibreChat"),
+        "librechat_url": normalize_service_url(data.get("librechat_url", "http://127.0.0.1:3080"), "LibreChat"),
         "vane_enabled": vane_enabled,
         "vane_url": normalize_service_url(data.get("vane_url", "http://127.0.0.1:32761"), "Vane"),
         "llama_server_executable": validate_server_executable(data.get("llama_server_executable")),
@@ -273,6 +278,7 @@ def persist_user_settings(settings: dict) -> None:
 def service_definitions(config: dict) -> dict[str, dict]:
     openwebui_root = Path(config.get("openwebui_root", str(DEFAULT_OPENWEBUI_ROOT))).resolve()
     openterminal_root = openwebui_root / "OpenTerminal"
+    librechat_root = Path(config.get("librechat_root", str(DEFAULT_LIBRECHAT_ROOT))).resolve()
     terminal_config_path = openterminal_root / "config.toml"
     terminal_config = {}
     if terminal_config_path.is_file():
@@ -283,6 +289,7 @@ def service_definitions(config: dict) -> dict[str, dict]:
             LOGGER.warning("Unable to read optional OpenTerminal config: %s", terminal_config_path)
     terminal_port = int(terminal_config.get("port", 8765))
     openwebui_port = int(urlparse(config["openwebui_url"]).port or 8181)
+    librechat_port = int(urlparse(config["librechat_url"]).port or 3080)
     terminal_endpoint = config["openterminal_url"].rstrip("/")
     return {
         "openwebui": {
@@ -304,6 +311,16 @@ def service_definitions(config: dict) -> dict[str, dict]:
             "open_url": None,
             "stdout": openterminal_root / "logs" / "open-terminal.out.log",
             "stderr": openterminal_root / "logs" / "open-terminal.err.log",
+        },
+        "librechat": {
+            "name": "LibreChat",
+            "script": librechat_root / "Start-LibreChat.ps1",
+            "working_directory": librechat_root,
+            "port": librechat_port,
+            "health_url": config["librechat_url"],
+            "open_url": config["librechat_url"],
+            "stdout": librechat_root / "logs" / "librechat-launchpad.out.log",
+            "stderr": librechat_root / "logs" / "librechat-launchpad.err.log",
         },
         "vane": {
             "name": "Vane",
@@ -872,6 +889,8 @@ def load_config() -> dict:
     config["openwebui_root"] = user_settings["openwebui_root"]
     config["openwebui_url"] = user_settings["openwebui_url"]
     config["openterminal_url"] = user_settings["openterminal_url"]
+    config["librechat_root"] = user_settings["librechat_root"]
+    config["librechat_url"] = user_settings["librechat_url"]
     config["vane_enabled"] = user_settings["vane_enabled"]
     config["vane_url"] = user_settings["vane_url"]
     config["llama_mayhem"] = user_settings["llama_mayhem"]
@@ -2322,6 +2341,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "openwebui_enabled": self.server.config["openwebui_enabled"],
                 "openwebui_url": self.server.config["openwebui_url"],
                 "openterminal_url": self.server.config["openterminal_url"],
+                "librechat_url": self.server.config["librechat_url"],
                 "vane_enabled": self.server.config["vane_enabled"],
                 "vane_url": self.server.config["vane_url"],
                 "performance_defaults": performance_defaults(self.server.config["server"]),
@@ -2336,6 +2356,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "openwebui_root": self.server.config["openwebui_root"],
                 "openwebui_url": self.server.config["openwebui_url"],
                 "openterminal_url": self.server.config["openterminal_url"],
+                "librechat_root": self.server.config["librechat_root"],
+                "librechat_url": self.server.config["librechat_url"],
                 "vane_enabled": self.server.config["vane_enabled"],
                 "vane_url": self.server.config["vane_url"],
                 "llama_server_executable": self.server.config["server"]["executable"],
@@ -2394,7 +2416,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         route = urlparse(self.path).path
         try:
             body = self._read_json()
-            service_match = re.fullmatch(r"/api/services/(openwebui|openterminal)/(start|stop|restart)", route)
+            service_match = re.fullmatch(r"/api/services/(openwebui|openterminal|librechat)/(start|stop|restart)", route)
             if service_match:
                 with self.server.service_lock:
                     item = control_service(self.server.config, service_match.group(1), service_match.group(2))
@@ -2412,9 +2434,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                     raise ValueError("llama_mayhem must be true or false")
                 settings = {
                     "openwebui_enabled": openwebui_enabled,
-                    "openwebui_root": normalize_service_root(body.get("openwebui_root")),
+                    "openwebui_root": normalize_service_root(body.get("openwebui_root"), "OpenWebUI"),
                     "openwebui_url": normalize_service_url(body.get("openwebui_url"), "OpenWebUI"),
                     "openterminal_url": normalize_service_url(body.get("openterminal_url"), "OpenTerminal"),
+                    "librechat_root": normalize_service_root(body.get("librechat_root"), "LibreChat"),
+                    "librechat_url": normalize_service_url(body.get("librechat_url"), "LibreChat"),
                     "vane_enabled": vane_enabled,
                     "vane_url": normalize_service_url(body.get("vane_url"), "Vane"),
                     "llama_server_executable": validate_server_executable(body.get("llama_server_executable")),
@@ -2426,11 +2450,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.server.config["openwebui_root"] = settings["openwebui_root"]
                     self.server.config["openwebui_url"] = settings["openwebui_url"]
                     self.server.config["openterminal_url"] = settings["openterminal_url"]
+                    self.server.config["librechat_root"] = settings["librechat_root"]
+                    self.server.config["librechat_url"] = settings["librechat_url"]
                     self.server.config["vane_enabled"] = settings["vane_enabled"]
                     self.server.config["vane_url"] = settings["vane_url"]
                     self.server.config["server"]["executable"] = settings["llama_server_executable"]
                     self.server.manager.set_llama_mayhem(settings["llama_mayhem"])
-                LOGGER.info("Updated user settings: openwebui_enabled=%s openwebui_root=%s openwebui=%s openterminal=%s vane_enabled=%s vane=%s executable=%s llama_mayhem=%s", settings["openwebui_enabled"], settings["openwebui_root"], settings["openwebui_url"], settings["openterminal_url"], settings["vane_enabled"], settings["vane_url"], settings["llama_server_executable"], settings["llama_mayhem"])
+                LOGGER.info("Updated user settings: openwebui_enabled=%s openwebui_root=%s openwebui=%s openterminal=%s librechat_root=%s librechat=%s vane_enabled=%s vane=%s executable=%s llama_mayhem=%s", settings["openwebui_enabled"], settings["openwebui_root"], settings["openwebui_url"], settings["openterminal_url"], settings["librechat_root"], settings["librechat_url"], settings["vane_enabled"], settings["vane_url"], settings["llama_server_executable"], settings["llama_mayhem"])
                 self._json(HTTPStatus.OK, {**settings, "settings_file": str(SETTINGS_PATH)})
                 return
             if route == "/api/launch":
