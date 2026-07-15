@@ -2380,6 +2380,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             "/app.js": (STATIC_DIR / "app.js", "text/javascript; charset=utf-8"),
             "/settings.js": (STATIC_DIR / "settings.js", "text/javascript; charset=utf-8"),
             "/favicon.svg": (STATIC_DIR / "favicon.svg", "image/svg+xml"),
+            "/favicon-launchpad.svg": (STATIC_DIR / "favicon.svg", "image/svg+xml"),
         }
         item = static_files.get(route)
         if item is None or not item[0].is_file():
