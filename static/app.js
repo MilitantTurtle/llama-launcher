@@ -81,10 +81,12 @@ function renderServices() {
   setServiceState("openwebui-detail-dot", "openwebui-detail-state", openwebui);
   setServiceState("openterminal-dot", "openterminal-state", openterminal);
   setServiceState("librechat-dot", "librechat-state", librechat);
+  setServiceState("librechat-detail-dot", "librechat-detail-state", librechat);
   setServiceState("vane-dot", "vane-state", state.services.vane);
   if (openwebui?.open_url) el("openwebui-link").href = openwebui.open_url;
   if (openwebui?.open_url) el("openwebui-direct-link").href = openwebui.open_url;
   if (librechat?.open_url) el("librechat-link").href = librechat.open_url;
+  if (librechat?.open_url) el("librechat-direct-link").href = librechat.open_url;
   if (state.services.vane?.open_url) el("vane-link").href = state.services.vane.open_url;
   document.querySelectorAll(".service-action").forEach((button) => {
     const service = state.services[button.dataset.service];
@@ -140,7 +142,7 @@ async function controlExternalService(button) {
   const labelId = {
     openwebui: "openwebui-detail-state",
     openterminal: "openterminal-state",
-    librechat: "librechat-state",
+    librechat: "librechat-detail-state",
   }[serviceId];
   const progress = { start: "Starting…", stop: "Stopping…", restart: "Restarting…" };
   el(labelId).textContent = progress[action] || "Working…";
@@ -1429,9 +1431,11 @@ async function initialize() {
     state.modelPort = session.model_port;
     state.servicesEnabled = session.openwebui_enabled;
     el("service-launcher").classList.toggle("hidden", !state.servicesEnabled);
+    el("librechat-launcher").classList.toggle("hidden", !state.servicesEnabled);
     el("openwebui-link").href = session.openwebui_url;
     el("openwebui-direct-link").href = session.openwebui_url;
     el("librechat-link").href = session.librechat_url;
+    el("librechat-direct-link").href = session.librechat_url;
     state.vaneEnabled = session.vane_enabled;
     el("vane-link").classList.toggle("hidden", !state.vaneEnabled);
     el("vane-link").href = session.vane_url;
@@ -1461,11 +1465,20 @@ el("search").addEventListener("input", (event) => {
   state.query = event.target.value.trim();
   renderCatalog();
 });
-el("services-summary").addEventListener("click", () => {
-  const expanded = el("service-launcher").classList.toggle("expanded");
-  el("services-summary").setAttribute("aria-expanded", String(expanded));
-  document.querySelector(".hero").classList.toggle("services-open", expanded);
-});
+function toggleServiceLauncher(launcherId, summaryId) {
+  const launcher = el(launcherId);
+  const willExpand = !launcher.classList.contains("expanded");
+  document.querySelectorAll(".service-launcher.expanded").forEach((item) => item.classList.remove("expanded"));
+  document.querySelectorAll(".service-menu-toggle").forEach((item) => item.setAttribute("aria-expanded", "false"));
+  launcher.classList.toggle("expanded", willExpand);
+  el(summaryId).setAttribute("aria-expanded", String(willExpand));
+  const hero = document.querySelector(".hero");
+  hero.classList.toggle("services-open", willExpand);
+  hero.classList.toggle("librechat-service-open", willExpand && launcherId === "librechat-launcher");
+}
+
+el("services-summary").addEventListener("click", () => toggleServiceLauncher("service-launcher", "services-summary"));
+el("librechat-summary").addEventListener("click", () => toggleServiceLauncher("librechat-launcher", "librechat-summary"));
 document.querySelectorAll(".service-action").forEach((button) => {
   button.addEventListener("click", () => controlExternalService(button));
 });

@@ -71,13 +71,14 @@ h1 {
 
 h1 span { color: var(--violet); }
 .subtitle { color: var(--muted); margin: 0; font-size: 1.02rem; }
-.hero-actions { position: relative; flex: 0 1 790px; width: min(790px, 58vw); min-width: 640px; display: grid; gap: 10px; }
-.hero-button-row { display: grid; grid-template-columns: minmax(170px, 1fr) minmax(210px, 1.1fr) minmax(150px, .82fr) 48px; align-items: stretch; gap: 10px; }
+.hero-actions { position: relative; flex: 0 1 980px; width: min(980px, 70vw); min-width: 780px; display: grid; gap: 10px; }
+.hero-button-row { display: grid; grid-template-columns: minmax(150px, .9fr) minmax(180px, 1.05fr) minmax(180px, 1.05fr) minmax(140px, .8fr) 48px; align-items: stretch; gap: 10px; }
 .hero-button-row > .connection-card, .hero-button-row > .service-launcher, .hero-button-row > .vane-card { width: 100%; min-width: 0; }
 .hero-button-row .service-card { width: 100%; min-width: 0; }
 .hero-button-row .settings-cog { width: 100%; height: auto; min-height: 100%; }
 .hero { transition: margin-bottom .18s ease; }
-.hero.services-open { margin-bottom: 345px; }
+.hero.services-open { margin-bottom: 265px; }
+.hero.services-open.librechat-service-open { margin-bottom: 175px; }
 
 .connection-card {
   display: flex;
@@ -471,10 +472,16 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px
   .hero-actions { width: 100%; max-width: none; min-width: 0; flex: none; }
 }
 
+@media (max-width: 900px) {
+  .hero-button-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hero-button-row .settings-cog { min-height: 58px; }
+}
+
 @media (max-width: 760px) {
   .shell { width: min(100% - 24px, 1240px); padding-top: 30px; }
   .hero { align-items: flex-start; flex-direction: column; }
-  .hero.services-open { margin-bottom: 535px; }
+  .hero.services-open { margin-bottom: 390px; }
+  .hero.services-open.librechat-service-open { margin-bottom: 230px; }
   .settings-hero { align-items: flex-start; flex-direction: column; }
   .hero-actions { width: 100%; justify-content: flex-start; }
   .connection-card { min-width: 0; flex: 1 1 165px; }
