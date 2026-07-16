@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-07-14",
+  "updated_at": "2026-07-16",
   "policy": {
     "provenance": "creator-model-card-or-creator-reference-inference-only",
     "context_is_separate": true,
@@ -964,6 +964,25 @@
           "reasoning": "off",
           "sampling": {"temperature": 0.3, "top_p": 1.0, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.2},
           "generation": {"n_predict": 1024}
+        }
+      ]
+    },
+    {
+      "id": "ornith10-9b-uncensored-peppx",
+      "name": "Ornith 1.0 9B Uncensored (PeppX)",
+      "patterns": ["ornith[._-]?(?:1[._-]?0[._-]?)?9b[._-]?uncensored"],
+      "preset_status": "reference",
+      "source": {
+        "publisher": "PeppX",
+        "url": "https://huggingface.co/PeppX/Ornith-1.0-9B-Uncensored-GGUF",
+        "checked_at": "2026-07-16"
+      },
+      "profiles": [
+        {
+          "name": "Base Ornith Reference",
+          "mode": "Reasoning / Agentic Coding",
+          "reasoning": "on",
+          "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20}
         }
       ]
     },

@@ -164,6 +164,19 @@ class SafetyTests(unittest.TestCase):
                 {"temperature": 1.0, "top_p": 0.95, "top_k": 64},
             )
 
+    def test_peppx_ornith_uncensored_uses_base_ornith_defaults(self) -> None:
+        library = app.ModelCardPresetLibrary(app.PRESET_LIBRARY_PATH)
+        uncensored = library.match("C:/models/ornith-9b-uncensored-Q4_K_M.gguf")
+        versioned = library.match("C:/models/Ornith-1.0-9B-Uncensored-Q8_0.gguf")
+        base = library.match("C:/models/Ornith-1.0-9B-Q6_K.gguf")
+        self.assertEqual(uncensored["id"], "ornith10-9b-uncensored-peppx")
+        self.assertEqual(versioned["id"], "ornith10-9b-uncensored-peppx")
+        self.assertEqual(base["id"], "ornith10")
+        self.assertEqual(uncensored["preset_status"], "reference")
+        self.assertEqual(uncensored["profiles"][0]["mode"], base["profiles"][0]["mode"])
+        self.assertEqual(uncensored["profiles"][0]["reasoning"], base["profiles"][0]["reasoning"])
+        self.assertEqual(uncensored["profiles"][0]["sampling"], base["profiles"][0]["sampling"])
+
     def test_native_file_picker_is_restricted_to_local_machine_addresses(self) -> None:
         self.assertTrue(app.is_local_machine_address("127.0.0.1"))
         self.assertTrue(app.is_local_machine_address("::1"))
