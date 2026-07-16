@@ -185,6 +185,25 @@ class SafetyTests(unittest.TestCase):
         }
         self.assertEqual(base["profiles"][0]["sampling"], expected_sampling)
         self.assertEqual(uncensored["profiles"][0]["sampling"], expected_sampling)
+        general_sampling = {
+            "temperature": 1.0,
+            "top_p": 0.95,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 1.5,
+            "repeat_penalty": 1.0,
+        }
+        self.assertEqual([profile["name"] for profile in base["profiles"]], ["Recommended", "General Thinking"])
+        self.assertEqual(
+            [profile["name"] for profile in uncensored["profiles"]],
+            ["Base Ornith Reference", "General Thinking Reference"],
+        )
+        self.assertEqual(base["profiles"][1]["mode"], "Reasoning / General")
+        self.assertEqual(base["profiles"][1]["reasoning"], "on")
+        self.assertEqual(base["profiles"][1]["sampling"], general_sampling)
+        self.assertEqual(uncensored["profiles"][1]["mode"], base["profiles"][1]["mode"])
+        self.assertEqual(uncensored["profiles"][1]["reasoning"], base["profiles"][1]["reasoning"])
+        self.assertEqual(uncensored["profiles"][1]["sampling"], general_sampling)
 
     def test_native_file_picker_is_restricted_to_local_machine_addresses(self) -> None:
         self.assertTrue(app.is_local_machine_address("127.0.0.1"))
