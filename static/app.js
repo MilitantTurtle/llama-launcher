@@ -752,20 +752,27 @@ function modelCard(model) {
   });
   actions.appendChild(savePresetButton);
   const launchButton = document.createElement("button");
+  const activeSelection = active && selected.id === state.status.id;
   launchButton.type = "button";
-  launchButton.className = "button launch-button";
-  launchButton.textContent = active && selected.id === state.status.id ? "Running" : "Launch";
-  launchButton.disabled = running;
-  launchButton.addEventListener("click", () => {
-    const options = parsedOptions(selected, controls);
-    if (!options) return;
-    const generation = parsedGeneration(selected, generationControls);
-    if (!generation) return;
-    const performance = parsedPerformance(selected, performanceControls);
-    if (!performance) return;
-    Object.assign(options, generation, performance);
-    launch(selected.id, optionsDifferFromPreset(selected) || performanceDiffersFromPreset(selected) ? options : null);
-  });
+  launchButton.className = activeSelection
+    ? "button danger launch-button model-stop-button"
+    : "button launch-button";
+  launchButton.textContent = activeSelection ? "Stop" : "Launch";
+  launchButton.disabled = running && !activeSelection;
+  if (activeSelection) {
+    launchButton.addEventListener("click", stopModel);
+  } else {
+    launchButton.addEventListener("click", () => {
+      const options = parsedOptions(selected, controls);
+      if (!options) return;
+      const generation = parsedGeneration(selected, generationControls);
+      if (!generation) return;
+      const performance = parsedPerformance(selected, performanceControls);
+      if (!performance) return;
+      Object.assign(options, generation, performance);
+      launch(selected.id, optionsDifferFromPreset(selected) || performanceDiffersFromPreset(selected) ? options : null);
+    });
+  }
   actions.appendChild(launchButton);
   selection.appendChild(actions);
 
@@ -1378,7 +1385,8 @@ async function submitAddModel(event) {
 }
 
 async function stopModel() {
-  el("stop-button").disabled = true;
+  const stopButtons = [el("stop-button"), ...document.querySelectorAll(".model-stop-button")];
+  stopButtons.forEach((button) => { button.disabled = true; });
   try {
     state.status = await request("/api/stop", { method: "POST", body: "{}" });
     renderStatus();
@@ -1387,7 +1395,7 @@ async function stopModel() {
   } catch (error) {
     toast(error.message, true);
   } finally {
-    el("stop-button").disabled = false;
+    stopButtons.forEach((button) => { button.disabled = false; });
   }
 }
 

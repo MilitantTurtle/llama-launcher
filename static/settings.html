@@ -37,7 +37,7 @@
           <p>The address used by the OpenWebUI bubble on the launchpad.</p>
           <label class="settings-service-toggle">
             <input id="settings-openwebui-enabled" name="openwebui_enabled" type="checkbox">
-            <span><strong>Show services button</strong><small>Show or hide the OpenWebUI, OpenTerminal, and LibreChat controls.</small></span>
+            <span><strong>Show connected services</strong><small>Show or hide the OpenWebUI, OpenTerminal, and LibreChat launchers.</small></span>
           </label>
           <label>OpenWebUI installation folder
             <input id="settings-openwebui-root" name="openwebui_root" required placeholder="C:\path\to\OpenWebUI" autocomplete="off">
@@ -54,16 +54,23 @@
             </label>
             <small class="settings-hint">The launchpad checks <code>/health</code> on this endpoint.</small>
           </div>
-          <div class="settings-subsection">
-            <span class="section-label">LIBRECHAT</span>
-            <label>LibreChat installation folder
-              <input id="settings-librechat-root" name="librechat_root" required placeholder="C:\path\to\LibreChat" autocomplete="off">
-            </label>
-            <label>IP address and port
-              <input id="settings-librechat" name="librechat_url" required placeholder="127.0.0.1:3080" autocomplete="off">
-            </label>
-            <a class="inline-link" id="settings-librechat-preview" target="_blank" rel="noreferrer">Open configured address &#8599;</a>
-          </div>
+        </div>
+      </section>
+
+      <section class="settings-page-card">
+        <div class="settings-card-icon">C</div>
+        <div class="settings-card-copy">
+          <span class="section-label">CONNECTED SERVICE</span>
+          <h2>LibreChat</h2>
+          <p>The address used by the LibreChat bubble on the launchpad.</p>
+          <label>LibreChat installation folder
+            <input id="settings-librechat-root" name="librechat_root" required placeholder="C:\path\to\LibreChat" autocomplete="off">
+          </label>
+          <p class="settings-note">Launchpad can stop or restart LibreChat only after it starts and records the exact process identity.</p>
+          <label>IP address and port
+            <input id="settings-librechat" name="librechat_url" required placeholder="127.0.0.1:3080" autocomplete="off">
+          </label>
+          <a class="inline-link" id="settings-librechat-preview" target="_blank" rel="noreferrer">Open configured address &#8599;</a>
         </div>
       </section>
 
